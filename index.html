@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>South Police Run - Runner Portal</title>
+  <title>Roadha Run - Runner Portal</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Firebase SDK -->
@@ -149,6 +149,42 @@
       .mobile-bib {
         font-size: clamp(2.5rem, 12vw, 4rem) !important;
       }
+      
+      /* Mobile calendar fixes */
+      .calendar-grid {
+        grid-template-columns: repeat(7, 1fr) !important;
+        gap: 0.25rem !important;
+      }
+      
+      .calendar-day {
+        padding: 0.25rem !important;
+        font-size: 12px !important;
+        min-height: 32px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+      
+      .calendar-header {
+        padding: 0.5rem !important;
+      }
+      
+      .calendar-popup {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 90vw !important;
+        max-width: 400px !important;
+        max-height: 80vh !important;
+        overflow-y: auto !important;
+      }
+      
+      .time-input-group {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 0.5rem !important;
+      }
     }
     
     /* Confetti */
@@ -288,6 +324,10 @@
       border-radius: 0.5rem;
       cursor: pointer;
       transition: all 0.2s;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .calendar-day:hover {
@@ -308,14 +348,14 @@
       position: relative;
     }
     
-    .calendar-day.has-activity::after {
-      content: '●';
+    .calendar-day.finished::after {
+      content: '✓';
       position: absolute;
-      bottom: 2px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #ea580c;
-      font-size: 12px;
+      top: 2px;
+      right: 2px;
+      color: #dc2626;
+      font-size: 10px;
+      font-weight: bold;
     }
     
     /* Progress bar styles */
@@ -438,6 +478,30 @@
       background: linear-gradient(90deg, #ea580c, #f59e0b);
       border-radius: 4px;
     }
+    
+    /* Mobile calendar modal */
+    .calendar-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    
+    .calendar-modal-content {
+      background: white;
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-300">
@@ -474,12 +538,14 @@
     let selectedDate = new Date();
     let filterRunner = 'all';
     let runnerActivities = {};
+    let adminLogActivityRunner = '';
 
     // PNG Image URLs
     const BACKGROUND_IMAGE = '6059996227148910161.jpg';
     const BIB_BACKGROUND = '6059996227148910161.jpg';
     const RUNNER_BACKGROUND = '6059996227148910161.jpg';
     const CALENDAR_BG = '6059996227148910161.jpg';
+    const LOGO_IMAGE = 'South Blues Black Transparent.png';
 
     // DOM Elements
     const app = document.getElementById('app');
@@ -532,14 +598,14 @@
       app.innerHTML = `
         <div class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gradient-to-br from-blue-900 to-teal-900 mobile-full-height">
           <div class="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-3xl shadow-2xl flex items-center justify-center mb-4 sm:mb-6 animate-bounce">
-            <div class="text-orange-600 text-3xl sm:text-4xl font-bold">🏃‍♂️</div>
+            <img src="${LOGO_IMAGE}" alt="Roadha Run Logo" class="w-20 h-20 rounded-2xl object-cover">
           </div>
-          <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight text-center px-4">South Police Run</h1>
+          <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight text-center px-4">SOUTH POLICE</h1>
           <p class="mt-2 text-base sm:text-xl text-white/80 font-medium text-center px-4">Official Runner Portal</p>
           <div class="mt-8 sm:mt-12 w-48 h-1 bg-white/20 rounded-full overflow-hidden">
             <div class="h-full bg-white" style="animation: loading 2s ease-in-out infinite;"></div>
           </div>
-          <p class="mt-4 text-white/40 text-xs sm:text-sm text-center px-4">Powered by South Police Department</p>
+          <p class="mt-4 text-white/40 text-xs sm:text-sm text-center px-4">Powered by Roadha Run</p>
         </div>
       `;
 
@@ -562,10 +628,10 @@
           <div class="w-full max-w-4xl bg-white/10 backdrop-blur-xl p-6 sm:p-10 rounded-3xl sm:rounded-[3rem] border border-white/10 shadow-2xl relative z-10 animate-fadeIn mobile-padding">
             <div class="text-center mb-8 sm:mb-10">
               <div class="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-xl shadow-orange-600/20">
-                <div class="text-orange-600 text-xl sm:text-2xl font-bold">🏃‍♂️</div>
+                <img src="${LOGO_IMAGE}" alt="Roadha Run Logo" class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover">
               </div>
               <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">
-                ${isRegister ? 'Join South Police Run' : 'Runner Login'}
+                ${isRegister ? 'Join Roadha Run' : 'Runner Login'}
               </h2>
               <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">${isRegister ? 'Register to get your Official Digital Bib' : 'Enter your Bib or Contact Number'}</p>
               ${!isRegister ? `
@@ -592,7 +658,7 @@
                         required
                         type="text" 
                         id="name"
-                        placeholder="Officer Name"
+                        placeholder="Runner Name"
                         class="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-white font-bold placeholder:text-white/20 focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all text-base"
                       />
                     </div>
@@ -602,7 +668,7 @@
                         required
                         type="text" 
                         id="nickname"
-                        placeholder="Call Sign / Nickname"
+                        placeholder="Nickname"
                         class="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-white font-bold placeholder:text-white/20 focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all text-base"
                       />
                     </div>
@@ -633,17 +699,17 @@
                         required
                         type="text" 
                         id="loginId"
-                        placeholder="BIB-1000"
+                        placeholder="1000"
                         class="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-white font-bold placeholder:text-white/20 focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all text-base"
                       />
                     </div>
                     <div class="space-y-1">
-                      <label class="text-[10px] font-black text-white/40 uppercase tracking-widest ml-4">Password *</label>
+                      <label class="text-[10px] font-black text-white/40 uppercase tracking-widest ml-4">Contact Number *</label>
                       <input 
                         required
-                        type="password" 
-                        id="password"
-                        placeholder="••••••••"
+                        type="tel" 
+                        id="contact"
+                        placeholder="+91 00000 00000"
                         class="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-white font-bold placeholder:text-white/20 focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all text-base"
                       />
                     </div>
@@ -773,7 +839,7 @@
                 </div>
               </div>
               <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Admin Login</h2>
-              <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">South Police Run Administration</p>
+              <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">Roadha Run Administration</p>
             </div>
 
             <form id="adminAuthForm" class="space-y-4">
@@ -895,7 +961,7 @@
           
           // Create user in Firebase Auth
           const userCredential = await auth.createUserWithEmailAndPassword(
-            `${bibNumber}@southpolice.run`,
+            `${bibNumber}@roadharun.run`,
             password
           );
           
@@ -925,24 +991,45 @@
           showBibAssignment(bibNumber);
           
         } else {
-          // Login with Bib number
-          const bibNumber = document.getElementById('loginId').value.toUpperCase();
-          const password = document.getElementById('password').value;
+          // Login with Bib number or contact
+          const loginId = document.getElementById('loginId').value;
+          const contact = document.getElementById('contact').value;
           
-          // Find runner by Bib number
+          // Find runner by Bib number (with or without BIB- prefix)
+          let bibNumber = loginId.toUpperCase();
+          if (!bibNumber.startsWith('BIB-')) {
+            bibNumber = `BIB-${bibNumber}`;
+          }
+          
+          // Find runner
           const snapshot = await db.ref(`runners/${bibNumber}`).once('value');
           if (!snapshot.exists()) {
-            throw new Error('Invalid Bib number');
+            // Try to find by contact number
+            const runnersSnapshot = await db.ref('runners').once('value');
+            let foundRunner = null;
+            runnersSnapshot.forEach(childSnapshot => {
+              const runner = childSnapshot.val();
+              if (runner.contact === contact) {
+                foundRunner = runner;
+              }
+            });
+            
+            if (!foundRunner) {
+              throw new Error('Invalid Bib number or contact');
+            }
+            
+            currentUser = foundRunner;
+          } else {
+            const userData = snapshot.val();
+            
+            // Check contact number
+            if (userData.contact !== contact) {
+              throw new Error('Invalid contact number');
+            }
+            
+            currentUser = userData;
           }
           
-          const userData = snapshot.val();
-          
-          // Check password
-          if (userData.password !== password) {
-            throw new Error('Invalid password');
-          }
-          
-          currentUser = userData;
           localStorage.setItem('currentUser', JSON.stringify(currentUser));
           
           // Show login success with Digital Bib
@@ -978,7 +1065,7 @@
                 <i class="fas fa-check text-2xl sm:text-3xl text-white"></i>
               </div>
               <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Login Successful!</h2>
-              <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">Welcome back to South Police Run Portal</p>
+              <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">Welcome back to Roadha Run Portal</p>
             </div>
             
             <!-- Digital Bib Card -->
@@ -997,7 +1084,6 @@
                         <div class="text-center sm:text-left">
                           <p class="text-xl sm:text-2xl font-black text-white">${user.name}</p>
                           <p class="text-lg sm:text-xl text-orange-300">"${user.nickname}"</p>
-                          <p class="text-sm text-white/60 mt-1">${user.contact}</p>
                         </div>
                       </div>
                     </div>
@@ -1109,7 +1195,7 @@
         bibCard.innerHTML = `
           <div style="text-align: center; padding: 20px;">
             <div style="font-size: 12px; font-weight: 900; color: #f59e0b; letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase;">
-              South Police Run - Digital Bib
+              Roadha Run - Digital Bib
             </div>
             <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: 900; margin: 20px 0; letter-spacing: 4px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
               ${user.bib_number}
@@ -1124,22 +1210,16 @@
                   <div style="font-size: 16px; color: #f59e0b;">"${user.nickname}"</div>
                 </div>
               </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-                <div>
-                  <div style="font-size: 12px; color: #ccc;">Contact</div>
-                  <div style="font-size: 14px; font-weight: 600;">${user.contact}</div>
-                </div>
-                <div>
-                  <div style="font-size: 12px; color: #ccc;">Total Distance</div>
-                  <div style="font-size: 14px; font-weight: 600;">${formatNumber(user.total_distance || 0, 1)} km</div>
-                </div>
+              <div style="text-align: center; margin-top: 15px;">
+                <div style="font-size: 12px; color: #ccc;">Total Distance</div>
+                <div style="font-size: 14px; font-weight: 600;">${formatNumber(user.total_distance || 0, 1)} km</div>
               </div>
             </div>
             <div style="margin-top: 20px; font-size: 10px; color: #aaa;">
-              Scan QR code to join South Police Run
+              Official Roadha Run Digital Bib
             </div>
             <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 10px; font-size: 11px;">
-              Powered by South Police Department | Developed by Ahmed Vaseem
+              Powered by Roadha Run
             </div>
           </div>
         `;
@@ -1160,24 +1240,38 @@
         // Convert to data URL
         const imageData = canvas.toDataURL('image/png');
         
-        // Create WhatsApp share URL
-        const message = `🏃‍♂️ *South Police Run - My Digital Bib* 🏃‍♂️\n\n` +
+        // Create WhatsApp share URL with image
+        const message = `🏃‍♂️ *Roadha Run - My Digital Bib* 🏃‍♂️\n\n` +
                        `*Bib Number:* ${user.bib_number}\n` +
                        `*Name:* ${user.name}\n` +
                        `*Nickname:* ${user.nickname}\n` +
-                       `*Contact:* ${user.contact}\n` +
                        `*Total Distance:* ${formatNumber(user.total_distance || 0, 1)} km\n\n` +
-                       `Join me at South Police Run! 🏅`;
+                       `Join me at Roadha Run! 🏅`;
         
-        // For WhatsApp Web
-        const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-        
-        // For mobile
+        // For mobile devices
         if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-          window.open(`whatsapp://send?text=${encodeURIComponent(message)}`, '_blank');
+          // Create a temporary link for downloading the image
+          const link = document.createElement('a');
+          link.href = imageData;
+          link.download = 'roadha-run-bib.png';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Try to share via WhatsApp
+          setTimeout(() => {
+            window.open(`whatsapp://send?text=${encodeURIComponent(message)}`, '_blank');
+          }, 1000);
         } else {
-          // Open in new tab for desktop
-          window.open(whatsappUrl, '_blank');
+          // For desktop - create download link
+          const link = document.createElement('a');
+          link.href = imageData;
+          link.download = 'roadha-run-bib.png';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          alert('Bib image downloaded! You can now share it on WhatsApp.');
         }
         
       } catch (error) {
@@ -1196,9 +1290,9 @@
           <div class="w-full max-w-2xl bg-white/10 backdrop-blur-xl p-6 sm:p-10 rounded-3xl sm:rounded-[3rem] border border-white/10 shadow-2xl relative z-10 animate-fadeIn mobile-padding">
             <div class="text-center mb-8 sm:mb-10">
               <div class="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-xl shadow-orange-600/20">
-                <div class="text-orange-600 text-2xl sm:text-3xl font-bold">🏅</div>
+                <img src="${LOGO_IMAGE}" alt="Roadha Run Logo" class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl object-cover">
               </div>
-              <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Welcome to South Police Run!</h2>
+              <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Welcome to Roadha Run!</h2>
               <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">Your Digital Runner Bib has been assigned</p>
             </div>
 
@@ -1210,7 +1304,6 @@
                 <div class="bg-black/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 mb-4 border border-white/20">
                   <p class="text-white text-base sm:text-lg font-bold">${currentUser.name}</p>
                   <p class="text-white/80 text-sm">"${currentUser.nickname}"</p>
-                  <p class="text-white/60 text-sm mt-2">${currentUser.contact}</p>
                 </div>
                 <p class="text-white/60 text-xs">Use this Bib number for all race activities</p>
               </div>
@@ -1238,7 +1331,7 @@
                   SHARE ON WHATSAPP
                 </button>
               </div>
-              <p class="text-white/40 text-xs mt-4 sm:mt-6">Login using your Bib number and password</p>
+              <p class="text-white/40 text-xs mt-4 sm:mt-6">Login using your Bib number and contact number</p>
             </div>
           </div>
         </div>
@@ -1341,8 +1434,8 @@
                 </svg>
               </button>
               <div class="hidden sm:flex items-center gap-2">
-                <div class="text-orange-600 text-xl sm:text-2xl">🏃‍♂️</div>
-                <h1 class="text-lg sm:text-xl font-black text-orange-600 uppercase tracking-tighter">South Police Run</h1>
+                <img src="${LOGO_IMAGE}" alt="Roadha Run Logo" class="w-8 h-8 rounded-lg">
+                <h1 class="text-lg sm:text-xl font-black text-orange-600 uppercase tracking-tighter">Roadha Run</h1>
               </div>
               <div class="flex items-center gap-1 bg-orange-600 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
                 <div class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full"></div>
@@ -1449,9 +1542,7 @@
                 </svg>
               </button>
               <div class="hidden sm:flex items-center gap-2">
-                <div class="text-white text-xl sm:text-2xl">
-                  <i class="fas fa-user-shield"></i>
-                </div>
+                <img src="${LOGO_IMAGE}" alt="Roadha Run Logo" class="w-8 h-8 rounded-lg">
                 <h1 class="text-lg sm:text-xl font-black text-white uppercase tracking-tighter">Admin Dashboard</h1>
               </div>
               <div class="flex items-center gap-1 bg-yellow-500 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
@@ -1516,8 +1607,8 @@
         <aside class="fixed top-14 sm:top-16 left-0 bottom-0 w-64 bg-zinc-900 text-white z-[60] transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 overflow-y-auto border-r border-zinc-800 hide-scrollbar">
           <div class="p-4 sm:p-6">
             <div class="flex items-center gap-3 mb-6 sm:mb-8">
-              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-red-600 to-red-500 flex items-center justify-center text-base sm:text-lg">
-                <i class="fas fa-user-shield"></i>
+              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-600 flex items-center justify-center text-base sm:text-lg">
+                <img src="${LOGO_IMAGE}" alt="Roadha Run Logo" class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover">
               </div>
               <div>
                 <p class="font-bold text-sm truncate w-32">Administrator</p>
@@ -1595,12 +1686,12 @@
           <div class="p-4 sm:p-6">
             <div class="flex items-center gap-3 mb-6 sm:mb-8">
               <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-base sm:text-lg font-bold">
-                ${currentUser.bib_number ? currentUser.bib_number.split('-')[1]?.substring(0, 2) || 'BI' : 'BI'}
+                <img src="${LOGO_IMAGE}" alt="Roadha Run Logo" class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover">
               </div>
               <div>
-                <p class="font-bold text-sm truncate w-32">${currentUser.nickname}</p>
-                <p class="text-xs text-orange-500 font-semibold">${currentUser.bib_number}</p>
-                <p class="text-xs text-gray-400 mt-1">${currentUser.name}</p>
+                <p class="font-bold text-sm truncate w-32">Roadha Run</p>
+                <p class="text-xs text-orange-500 font-semibold">Runner Portal</p>
+                <p class="text-xs text-gray-400 mt-1">${currentUser.nickname}</p>
               </div>
             </div>
 
@@ -2008,18 +2099,6 @@
                     <span id="selectedDateDisplay" class="text-white">${formatDate(selectedDate)}</span>
                     <i class="fas fa-calendar-alt text-orange-400"></i>
                   </div>
-                  <div id="calendarPopup" class="calendar-popup hidden">
-                    <div class="calendar-header">
-                      <button id="prevMonth" class="p-1 hover:bg-gray-100 rounded">
-                        <i class="fas fa-chevron-left"></i>
-                      </button>
-                      <h3 id="currentMonth" class="font-bold"></h3>
-                      <button id="nextMonth" class="p-1 hover:bg-gray-100 rounded">
-                        <i class="fas fa-chevron-right"></i>
-                      </button>
-                    </div>
-                    <div id="calendarDays" class="calendar-grid"></div>
-                  </div>
                 </div>
               </div>
               
@@ -2099,7 +2178,7 @@
             </div>
           </div>
 
-          <!-- Additional Info Section (Removed Registered Runners) -->
+          <!-- Additional Info Section -->
           <div class="bg-gradient-to-r from-orange-600 to-amber-500 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg text-white">
             <div class="flex items-center justify-between">
               <div>
@@ -2117,9 +2196,6 @@
         </div>
       `;
 
-      // Initialize calendar
-      initializeCalendar();
-      
       // Load filtered activities
       loadFilteredActivities();
       
@@ -2137,6 +2213,188 @@
         isLogActivityModalOpen = true;
         renderLogActivityModal();
       });
+      
+      // Calendar click event
+      document.querySelector('.calendar-input').addEventListener('click', () => {
+        showCalendarModal('filter');
+      });
+    }
+
+    // Show Calendar Modal
+    function showCalendarModal(type) {
+      const modal = document.createElement('div');
+      modal.className = 'calendar-modal animate-fadeIn';
+      modal.innerHTML = `
+        <div class="calendar-modal-content">
+          <div class="p-4">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-bold">Select Date</h3>
+              <button id="closeCalendarModal" class="p-2 hover:bg-gray-100 rounded-full">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div id="calendarContent"></div>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Initialize calendar
+      initializeCalendarModal(type, modal);
+      
+      // Close modal
+      modal.querySelector('#closeCalendarModal').addEventListener('click', () => {
+        document.body.removeChild(modal);
+      });
+      
+      // Close when clicking outside
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      });
+    }
+
+    // Initialize Calendar Modal
+    async function initializeCalendarModal(type, modal) {
+      const calendarContent = modal.querySelector('#calendarContent');
+      let currentMonthYear = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+      
+      async function updateCalendar() {
+        // Update month display
+        const monthYear = currentMonthYear.toLocaleDateString('en-GB', { 
+          month: 'long', 
+          year: 'numeric' 
+        });
+        
+        // Get activities for the month
+        const activities = await getActivitiesForMonth(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1);
+        const activityDays = new Set();
+        const finishedDays = new Set();
+        
+        activities.forEach(activity => {
+          const activityDate = new Date(activity.date);
+          activityDays.add(activityDate.getDate());
+          
+          // Check if activity is approved (finished)
+          if (activity.status === 'approved') {
+            finishedDays.add(activityDate.getDate());
+          }
+        });
+        
+        calendarContent.innerHTML = `
+          <div class="calendar-header">
+            <button id="prevMonth" class="p-2 hover:bg-gray-100 rounded">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <h3 class="font-bold">${monthYear}</h3>
+            <button id="nextMonth" class="p-2 hover:bg-gray-100 rounded">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+          <div class="calendar-grid" id="calendarDaysModal"></div>
+        `;
+        
+        const calendarDays = calendarContent.querySelector('#calendarDaysModal');
+        
+        // Add day headers
+        const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        days.forEach(day => {
+          const dayElement = document.createElement('div');
+          dayElement.className = 'text-center text-xs font-bold text-gray-500';
+          dayElement.textContent = day;
+          calendarDays.appendChild(dayElement);
+        });
+        
+        // Get first day of month
+        const firstDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), 1);
+        const lastDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1, 0);
+        
+        // Add empty cells for days before first day of month
+        for (let i = 0; i < firstDay.getDay(); i++) {
+          const emptyElement = document.createElement('div');
+          emptyElement.className = 'calendar-day disabled';
+          calendarDays.appendChild(emptyElement);
+        }
+        
+        // Add days of month
+        for (let i = 1; i <= lastDay.getDate(); i++) {
+          const dayDate = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), i);
+          const dayElement = document.createElement('div');
+          dayElement.className = 'calendar-day';
+          
+          // Check if this day has activities
+          if (activityDays.has(i)) {
+            dayElement.classList.add('has-activity');
+          }
+          
+          // Check if this day has finished activities
+          if (finishedDays.has(i)) {
+            dayElement.classList.add('finished');
+          }
+          
+          // Check if this is the selected date
+          const isSelected = selectedDate && 
+            dayDate.getDate() === selectedDate.getDate() &&
+            dayDate.getMonth() === selectedDate.getMonth() &&
+            dayDate.getFullYear() === selectedDate.getFullYear();
+          
+          if (isSelected) {
+            dayElement.classList.add('selected');
+          }
+          
+          dayElement.textContent = i;
+          dayElement.addEventListener('click', () => {
+            selectedDate = dayDate;
+            if (type === 'filter') {
+              document.getElementById('selectedDateDisplay').textContent = formatDate(selectedDate);
+              loadFilteredActivities();
+            } else if (type === 'feed') {
+              document.getElementById('feedDateDisplay').textContent = formatDate(selectedDate);
+              loadActivityFeed();
+            }
+            document.body.removeChild(modal);
+          });
+          calendarDays.appendChild(dayElement);
+        }
+        
+        // Add event listeners for prev/next buttons
+        calendarContent.querySelector('#prevMonth').addEventListener('click', () => {
+          currentMonthYear.setMonth(currentMonthYear.getMonth() - 1);
+          updateCalendar();
+        });
+        
+        calendarContent.querySelector('#nextMonth').addEventListener('click', () => {
+          currentMonthYear.setMonth(currentMonthYear.getMonth() + 1);
+          updateCalendar();
+        });
+      }
+      
+      // Get activities for a specific month
+      async function getActivitiesForMonth(year, month) {
+        try {
+          const snapshot = await db.ref('running_logs').once('value');
+          const activities = [];
+          
+          snapshot.forEach(childSnapshot => {
+            const activity = childSnapshot.val();
+            const activityDate = new Date(activity.date);
+            
+            if (activityDate.getFullYear() === year && activityDate.getMonth() + 1 === month) {
+              activities.push(activity);
+            }
+          });
+          
+          return activities;
+        } catch (error) {
+          console.error('Error getting activities for month:', error);
+          return [];
+        }
+      }
+      
+      // Initialize calendar
+      updateCalendar();
     }
 
     // Admin Dashboard Content
@@ -2198,7 +2456,7 @@
           <!-- Admin Welcome -->
           <div>
             <h2 class="text-xl sm:text-2xl md:text-3xl font-black tracking-tight dark:text-white">Welcome, Administrator! <i class="fas fa-user-shield text-red-600"></i></h2>
-            <p class="text-gray-500 dark:text-gray-400 font-medium text-sm sm:text-base">South Police Run Administration Dashboard</p>
+            <p class="text-gray-500 dark:text-gray-400 font-medium text-sm sm:text-base">Roadha Run Administration Dashboard</p>
           </div>
 
           <!-- Admin Stats Grid -->
@@ -2282,16 +2540,16 @@
                 </div>
               </button>
               <button 
-                data-tab="adminReports"
+                id="adminLogActivity"
                 class="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-left"
               >
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-800 flex items-center justify-center">
-                    <i class="fas fa-chart-bar text-green-600 dark:text-green-400"></i>
+                    <i class="fas fa-plus text-green-600 dark:text-green-400"></i>
                   </div>
                   <div>
-                    <p class="font-bold dark:text-white">View Reports</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Analytics & insights</p>
+                    <p class="font-bold dark:text-white">Log Activity</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">For any runner</p>
                   </div>
                 </div>
               </button>
@@ -2357,6 +2615,324 @@
           renderAdminContent();
         });
       });
+      
+      // Add event listener for admin log activity
+      document.getElementById('adminLogActivity').addEventListener('click', () => {
+        isLogActivityModalOpen = true;
+        renderAdminLogActivityModal();
+      });
+    }
+
+    // Admin Log Activity Modal
+    function renderAdminLogActivityModal() {
+      const modal = document.createElement('div');
+      modal.className = 'fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+      modal.innerHTML = `
+        <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-zinc-700">
+          <div class="p-4 sm:p-6">
+            <div class="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 class="text-xl font-black dark:text-white">Log Activity (Admin)</h2>
+              <button id="closeModal" class="p-2 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-full text-gray-400">
+                <i class="fas fa-times text-lg"></i>
+              </button>
+            </div>
+            
+            <form id="adminLogActivityForm" class="space-y-4 sm:space-y-5">
+              <!-- Runner Selection -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Select Runner</label>
+                <select 
+                  id="runnerSelect"
+                  class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                >
+                  <option value="">Select a runner</option>
+                </select>
+              </div>
+              
+              <!-- Activity Type -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Activity Type</label>
+                <div class="grid grid-cols-2 gap-2">
+                  <button type="button" data-type="run" class="activity-type-btn flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-400 transition-all">
+                    <i class="fas fa-running"></i>
+                    <span class="font-bold">Run</span>
+                  </button>
+                  <button type="button" data-type="walk" class="activity-type-btn flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-400 transition-all">
+                    <i class="fas fa-walking"></i>
+                    <span class="font-bold">Walk</span>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Date -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Date</label>
+                <input 
+                  type="date" 
+                  id="activityDate"
+                  value="${new Date().toISOString().split('T')[0]}"
+                  class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                  required
+                />
+              </div>
+              
+              <!-- Distance -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Distance (km)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  min="0.01"
+                  id="distance"
+                  placeholder="e.g., 5.25"
+                  class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                  required
+                />
+              </div>
+              
+              <!-- Duration -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Duration</label>
+                <div class="time-input-group">
+                  <div class="time-input">
+                    <label class="text-xs text-gray-500 dark:text-gray-400">Hours</label>
+                    <input 
+                      type="number" 
+                      id="hours"
+                      min="0"
+                      value="0"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                    />
+                  </div>
+                  <div class="time-input">
+                    <label class="text-xs text-gray-500 dark:text-gray-400">Minutes</label>
+                    <input 
+                      type="number" 
+                      id="minutes"
+                      min="0"
+                      max="59"
+                      value="30"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                    />
+                  </div>
+                  <div class="time-input">
+                    <label class="text-xs text-gray-500 dark:text-gray-400">Seconds</label>
+                    <input 
+                      type="number" 
+                      id="seconds"
+                      min="0"
+                      max="59"
+                      value="0"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Pace -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Average Pace (min/km)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  id="pace"
+                  placeholder="e.g., 6.25"
+                  class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                  required
+                />
+              </div>
+              
+              <!-- Notes -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Notes (Optional)</label>
+                <textarea 
+                  id="notes"
+                  rows="3"
+                  placeholder="Activity notes..."
+                  class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                ></textarea>
+              </div>
+              
+              <!-- Status -->
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Status</label>
+                <select 
+                  id="activityStatus"
+                  class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                >
+                  <option value="approved">Approved</option>
+                  <option value="pending">Pending</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              
+              <!-- Submit Button -->
+              <button 
+                type="submit"
+                id="submitActivityBtn"
+                class="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 sm:py-4 rounded-xl shadow-xl shadow-red-600/20 transition-all flex items-center justify-center gap-2"
+              >
+                <i class="fas fa-plus"></i>
+                SUBMIT ACTIVITY
+              </button>
+            </form>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Add event listeners
+      const closeBtn = modal.querySelector('#closeModal');
+      const activityTypeBtns = modal.querySelectorAll('.activity-type-btn');
+      const form = modal.querySelector('#adminLogActivityForm');
+      const runnerSelect = modal.querySelector('#runnerSelect');
+      
+      let selectedActivityType = 'run';
+      
+      // Set initial activity type
+      activityTypeBtns[0].classList.add('active', 'border-red-600', 'text-red-600');
+      
+      // Load runners
+      loadRunnersForAdminLog(runnerSelect);
+      
+      // Activity type selection
+      activityTypeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedActivityType = btn.dataset.type;
+          activityTypeBtns.forEach(b => {
+            b.classList.remove('active', 'border-red-600', 'text-red-600');
+          });
+          btn.classList.add('active', 'border-red-600', 'text-red-600');
+        });
+      });
+      
+      // Close modal
+      closeBtn.addEventListener('click', () => {
+        document.body.removeChild(modal);
+        isLogActivityModalOpen = false;
+      });
+      
+      // Form submission
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const submitBtn = modal.querySelector('#submitActivityBtn');
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div> Processing...';
+        
+        try {
+          // Validate inputs
+          const runnerBib = runnerSelect.value;
+          const distance = parseFloat(modal.querySelector('#distance').value);
+          const hours = parseInt(modal.querySelector('#hours').value) || 0;
+          const minutes = parseInt(modal.querySelector('#minutes').value) || 0;
+          const seconds = parseInt(modal.querySelector('#seconds').value) || 0;
+          const pace = parseFloat(modal.querySelector('#pace').value);
+          const date = modal.querySelector('#activityDate').value;
+          const notes = modal.querySelector('#notes').value;
+          const status = modal.querySelector('#activityStatus').value;
+          
+          if (!runnerBib || !distance || isNaN(distance) || !pace || isNaN(pace) || !date) {
+            throw new Error('Please fill all required fields with valid numbers');
+          }
+          
+          // Get runner info
+          const runnerSnapshot = await db.ref(`runners/${runnerBib}`).once('value');
+          const runner = runnerSnapshot.val();
+          
+          if (!runner) {
+            throw new Error('Runner not found');
+          }
+          
+          // Calculate total minutes
+          const totalMinutes = hours * 60 + minutes + seconds / 60;
+          
+          // Save activity to database
+          const activityData = {
+            bib_number: runnerBib,
+            runner_name: runner.name,
+            nickname: runner.nickname,
+            date: date,
+            distance: distance.toFixed(2),
+            duration: totalMinutes.toFixed(2),
+            pace: pace.toFixed(2),
+            activity_type: selectedActivityType,
+            notes: notes || null,
+            status: status,
+            submission_date: new Date().toISOString(),
+            reviewed_date: new Date().toISOString(),
+            reviewed_by: 'admin',
+            likes: 0,
+            liked_by: []
+          };
+          
+          const activityRef = await db.ref('running_logs').push(activityData);
+          
+          // Update runner stats if approved
+          if (status === 'approved') {
+            const newTotalRuns = (runner.total_runs || 0) + 1;
+            const newTotalDistance = (parseFloat(runner.total_distance) || 0) + distance;
+            const newAvgPace = ((parseFloat(runner.avg_pace) || 0) * (newTotalRuns - 1) + pace) / newTotalRuns;
+            
+            await db.ref(`runners/${runnerBib}`).update({
+              total_runs: newTotalRuns,
+              total_distance: newTotalDistance,
+              avg_pace: newAvgPace.toFixed(2)
+            });
+          }
+          
+          alert('Activity logged successfully!');
+          
+          // Close modal
+          document.body.removeChild(modal);
+          isLogActivityModalOpen = false;
+          
+        } catch (error) {
+          alert('Error: ' + error.message);
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+        }
+      });
+      
+      // Close modal when clicking outside
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+          isLogActivityModalOpen = false;
+        }
+      });
+    }
+
+    // Load runners for admin log activity
+    async function loadRunnersForAdminLog(selectElement) {
+      try {
+        const snapshot = await db.ref('runners').once('value');
+        const runners = [];
+        
+        snapshot.forEach(childSnapshot => {
+          const runner = childSnapshot.val();
+          runners.push(runner);
+        });
+
+        // Sort by name
+        runners.sort((a, b) => a.name.localeCompare(b.name));
+        
+        selectElement.innerHTML = `
+          <option value="">Select a runner</option>
+          ${runners.map(runner => `
+            <option value="${runner.bib_number}">
+              ${runner.name} (${runner.bib_number})
+            </option>
+          `).join('')}
+        `;
+        
+      } catch (error) {
+        console.error('Error loading runners:', error);
+        selectElement.innerHTML = '<option value="">Error loading runners</option>';
+      }
     }
 
     // Manage Runners Component
@@ -3540,7 +4116,7 @@
           <div class="flex justify-between items-center mb-4 sm:mb-6">
             <div>
               <h2 class="text-xl sm:text-2xl font-black tracking-tight dark:text-white">Reports & Analytics</h2>
-              <p class="text-gray-500 dark:text-gray-400 text-sm">South Police Run Performance Insights</p>
+              <p class="text-gray-500 dark:text-gray-400 text-sm">Roadha Run Performance Insights</p>
             </div>
             <button 
               id="exportReports"
@@ -3718,21 +4294,21 @@
     // Export reports
     function exportReports() {
       // Create CSV content
-      let csvContent = "South Police Run - Admin Report\n\n";
+      let csvContent = "Roadha Run - Admin Report\n\n";
       csvContent += "Generated: " + new Date().toLocaleString() + "\n\n";
       csvContent += "Metric,Value\n";
       csvContent += "Total Runners," + totalRegisteredRunners + "\n";
       csvContent += "Total Activities," + "N/A" + "\n";
       csvContent += "Total Distance (km)," + "N/A" + "\n";
       csvContent += "Pending Reviews," + "N/A" + "\n\n";
-      csvContent += "Report exported from South Police Run Admin Dashboard";
+      csvContent += "Report exported from Roadha Run Admin Dashboard";
       
       // Create blob and download
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `south-police-run-report-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `roadha-run-report-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -3754,18 +4330,6 @@
                   <span id="feedDateDisplay" class="text-white">${formatDate(selectedDate)}</span>
                   <i class="fas fa-calendar-alt text-orange-400"></i>
                 </div>
-                <div id="feedCalendarPopup" class="calendar-popup hidden">
-                  <div class="calendar-header">
-                    <button id="feedPrevMonth" class="p-1 hover:bg-gray-100 rounded">
-                      <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <h3 id="feedCurrentMonth" class="font-bold"></h3>
-                    <button id="feedNextMonth" class="p-1 hover:bg-gray-100 rounded">
-                      <i class="fas fa-chevron-right"></i>
-                    </button>
-                  </div>
-                  <div id="feedCalendarDays" class="calendar-grid"></div>
-                </div>
               </div>
             </div>
           </div>
@@ -3778,145 +4342,14 @@
           </div>
         </div>
       `;
-
-      // Initialize calendar for feed
-      initializeFeedCalendar();
       
       // Load activity feed
       loadActivityFeed();
-    }
-
-    // Initialize feed calendar
-    function initializeFeedCalendar() {
-      const calendarInput = document.querySelector('.calendar-input');
-      const calendarPopup = document.getElementById('feedCalendarPopup');
-      const currentMonth = document.getElementById('feedCurrentMonth');
-      const calendarDays = document.getElementById('feedCalendarDays');
-      const prevMonthBtn = document.getElementById('feedPrevMonth');
-      const nextMonthBtn = document.getElementById('feedNextMonth');
-      const selectedDateDisplay = document.getElementById('feedDateDisplay');
       
-      let currentDate = new Date(selectedDate);
-      let currentMonthYear = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      
-      async function updateCalendar() {
-        // Update month display
-        currentMonth.textContent = currentMonthYear.toLocaleDateString('en-GB', { 
-          month: 'long', 
-          year: 'numeric' 
-        });
-        
-        // Clear previous days
-        calendarDays.innerHTML = '';
-        
-        // Get first day of month
-        const firstDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), 1);
-        const lastDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1, 0);
-        
-        // Add day headers
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        days.forEach(day => {
-          const dayElement = document.createElement('div');
-          dayElement.className = 'text-center text-xs font-bold text-gray-500';
-          dayElement.textContent = day;
-          calendarDays.appendChild(dayElement);
-        });
-        
-        // Add empty cells for days before first day of month
-        for (let i = 0; i < firstDay.getDay(); i++) {
-          const emptyElement = document.createElement('div');
-          emptyElement.className = 'calendar-day disabled';
-          calendarDays.appendChild(emptyElement);
-        }
-        
-        // Get activities for the month to mark days with activities
-        const activities = await getActivitiesForMonth(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1);
-        const activityDays = new Set();
-        activities.forEach(activity => {
-          const activityDate = new Date(activity.date);
-          activityDays.add(activityDate.getDate());
-        });
-        
-        // Add days of month
-        for (let i = 1; i <= lastDay.getDate(); i++) {
-          const dayDate = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), i);
-          const dayElement = document.createElement('div');
-          dayElement.className = 'calendar-day';
-          
-          // Check if this day has activities
-          if (activityDays.has(i)) {
-            dayElement.classList.add('has-activity');
-          }
-          
-          // Check if this is the selected date
-          const isSelected = selectedDate && 
-            dayDate.getDate() === selectedDate.getDate() &&
-            dayDate.getMonth() === selectedDate.getMonth() &&
-            dayDate.getFullYear() === selectedDate.getFullYear();
-          
-          if (isSelected) {
-            dayElement.classList.add('selected');
-          }
-          
-          dayElement.textContent = i;
-          dayElement.addEventListener('click', () => {
-            selectedDate = dayDate;
-            selectedDateDisplay.textContent = formatDate(selectedDate);
-            calendarPopup.classList.add('hidden');
-            loadActivityFeed();
-          });
-          calendarDays.appendChild(dayElement);
-        }
-      }
-      
-      // Get activities for a specific month
-      async function getActivitiesForMonth(year, month) {
-        try {
-          const snapshot = await db.ref('running_logs').once('value');
-          const activities = [];
-          
-          snapshot.forEach(childSnapshot => {
-            const activity = childSnapshot.val();
-            const activityDate = new Date(activity.date);
-            
-            if (activityDate.getFullYear() === year && activityDate.getMonth() + 1 === month) {
-              activities.push(activity);
-            }
-          });
-          
-          return activities;
-        } catch (error) {
-          console.error('Error getting activities for month:', error);
-          return [];
-        }
-      }
-      
-      // Toggle calendar popup
-      calendarInput.addEventListener('click', () => {
-        calendarPopup.classList.toggle('hidden');
+      // Calendar click event for feed
+      document.querySelector('.calendar-input').addEventListener('click', () => {
+        showCalendarModal('feed');
       });
-      
-      // Previous month
-      prevMonthBtn.addEventListener('click', () => {
-        currentMonthYear.setMonth(currentMonthYear.getMonth() - 1);
-        updateCalendar();
-      });
-      
-      // Next month
-      nextMonthBtn.addEventListener('click', () => {
-        currentMonthYear.setMonth(currentMonthYear.getMonth() + 1);
-        updateCalendar();
-      });
-      
-      // Close calendar when clicking outside
-      document.addEventListener('click', (event) => {
-        if (!calendarInput.contains(event.target) && !calendarPopup.contains(event.target)) {
-          calendarPopup.classList.add('hidden');
-        }
-      });
-      
-      // Initialize calendar
-      updateCalendar();
     }
 
     // Load activity feed for runners
@@ -4622,139 +5055,6 @@
         month: 'short', 
         year: 'numeric' 
       });
-    }
-
-    // Initialize calendar
-    async function initializeCalendar() {
-      const calendarInput = document.querySelector('.calendar-input');
-      const calendarPopup = document.getElementById('calendarPopup');
-      const currentMonth = document.getElementById('currentMonth');
-      const calendarDays = document.getElementById('calendarDays');
-      const prevMonthBtn = document.getElementById('prevMonth');
-      const nextMonthBtn = document.getElementById('nextMonth');
-      const selectedDateDisplay = document.getElementById('selectedDateDisplay');
-      
-      let currentDate = new Date(selectedDate);
-      let currentMonthYear = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      
-      async function updateCalendar() {
-        // Update month display
-        currentMonth.textContent = currentMonthYear.toLocaleDateString('en-GB', { 
-          month: 'long', 
-          year: 'numeric' 
-        });
-        
-        // Clear previous days
-        calendarDays.innerHTML = '';
-        
-        // Get first day of month
-        const firstDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), 1);
-        const lastDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1, 0);
-        
-        // Add day headers
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        days.forEach(day => {
-          const dayElement = document.createElement('div');
-          dayElement.className = 'text-center text-xs font-bold text-gray-500';
-          dayElement.textContent = day;
-          calendarDays.appendChild(dayElement);
-        });
-        
-        // Add empty cells for days before first day of month
-        for (let i = 0; i < firstDay.getDay(); i++) {
-          const emptyElement = document.createElement('div');
-          emptyElement.className = 'calendar-day disabled';
-          calendarDays.appendChild(emptyElement);
-        }
-        
-        // Get activities for the month to mark days with activities
-        const activities = await getActivitiesForMonth(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1);
-        const activityDays = new Set();
-        activities.forEach(activity => {
-          const activityDate = new Date(activity.date);
-          activityDays.add(activityDate.getDate());
-        });
-        
-        // Add days of month
-        for (let i = 1; i <= lastDay.getDate(); i++) {
-          const dayDate = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), i);
-          const dayElement = document.createElement('div');
-          dayElement.className = 'calendar-day';
-          
-          // Check if this day has activities
-          if (activityDays.has(i)) {
-            dayElement.classList.add('has-activity');
-          }
-          
-          // Check if this is the selected date
-          const isSelected = selectedDate && 
-            dayDate.getDate() === selectedDate.getDate() &&
-            dayDate.getMonth() === selectedDate.getMonth() &&
-            dayDate.getFullYear() === selectedDate.getFullYear();
-          
-          if (isSelected) {
-            dayElement.classList.add('selected');
-          }
-          
-          dayElement.textContent = i;
-          dayElement.addEventListener('click', () => {
-            selectedDate = dayDate;
-            selectedDateDisplay.textContent = formatDate(selectedDate);
-            calendarPopup.classList.add('hidden');
-            loadFilteredActivities();
-          });
-          calendarDays.appendChild(dayElement);
-        }
-      }
-      
-      // Get activities for a specific month
-      async function getActivitiesForMonth(year, month) {
-        try {
-          const snapshot = await db.ref('running_logs').once('value');
-          const activities = [];
-          
-          snapshot.forEach(childSnapshot => {
-            const activity = childSnapshot.val();
-            const activityDate = new Date(activity.date);
-            
-            if (activityDate.getFullYear() === year && activityDate.getMonth() + 1 === month) {
-              activities.push(activity);
-            }
-          });
-          
-          return activities;
-        } catch (error) {
-          console.error('Error getting activities for month:', error);
-          return [];
-        }
-      }
-      
-      // Toggle calendar popup
-      calendarInput.addEventListener('click', () => {
-        calendarPopup.classList.toggle('hidden');
-      });
-      
-      // Previous month
-      prevMonthBtn.addEventListener('click', () => {
-        currentMonthYear.setMonth(currentMonthYear.getMonth() - 1);
-        updateCalendar();
-      });
-      
-      // Next month
-      nextMonthBtn.addEventListener('click', () => {
-        currentMonthYear.setMonth(currentMonthYear.getMonth() + 1);
-        updateCalendar();
-      });
-      
-      // Close calendar when clicking outside
-      document.addEventListener('click', (event) => {
-        if (!calendarInput.contains(event.target) && !calendarPopup.contains(event.target)) {
-          calendarPopup.classList.add('hidden');
-        }
-      });
-      
-      // Initialize calendar
-      updateCalendar();
     }
 
     // Load filtered activities for runners
