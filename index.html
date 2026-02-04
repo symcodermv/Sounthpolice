@@ -17,6 +17,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- html2canvas for Bib sharing -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -301,23 +303,158 @@
       color: #d1d5db;
       cursor: not-allowed;
     }
+    
+    .calendar-day.has-activity {
+      position: relative;
+    }
+    
+    .calendar-day.has-activity::after {
+      content: '●';
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #ea580c;
+      font-size: 12px;
+    }
+    
+    /* Progress bar styles */
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background-color: #374151;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+    
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ea580c, #f59e0b);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    
+    /* Medal progress styles */
+    .medal-progress-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .medal-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    
+    /* Admin badge */
+    .admin-badge {
+      background: linear-gradient(135deg, #8B0000 0%, #DC143C 100%);
+      color: white;
+    }
+    
+    /* Status badges */
+    .status-pending {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+    
+    .status-approved {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    
+    .status-rejected {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+    
+    /* Time input styles */
+    .time-input-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .time-input {
+      flex: 1;
+    }
+    
+    .time-input label {
+      display: block;
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-bottom: 0.25rem;
+    }
+    
+    /* Bib sharing modal */
+    .bib-sharing-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+    }
+    
+    .bib-sharing-card {
+      background: white;
+      border-radius: 1.5rem;
+      max-width: 400px;
+      width: 90%;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    /* Calendar background */
+    .calendar-bg {
+      background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1517960413843-0aee8e2b3285?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80') center/cover no-repeat;
+    }
+    
+    /* Ranking progress bars */
+    .ranking-progress-bar {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    
+    .ranking-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ea580c, #f59e0b);
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 transition-colors duration-300">
   <div id="app"></div>
 
   <script>
- // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAEPb1cV5ThxVni1_W_dCRAn8wl_v6otew",
-  authDomain: "track-afb50.firebaseapp.com",
-  databaseURL: "https://track-afb50-default-rtdb.firebaseio.com",
-  projectId: "track-afb50",
-  storageBucket: "track-afb50.firebasestorage.app",
-  messagingSenderId: "575348564273",
-  appId: "1:575348564273:web:f5c0181b26fa8f2bb69010",
-  measurementId: "G-W5SRFYRTQC"
-};
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCV4danc7NH3BfsQCxF2nuS0iV_V1aoQe0",
+      authDomain: "symcodermv-cba04.firebaseapp.com",
+      databaseURL: "https://symcodermv-cba04-default-rtdb.firebaseio.com",
+      projectId: "symcodermv-cba04",
+      storageBucket: "symcodermv-cba04.firebasestorage.app",
+      messagingSenderId: "432074388052",
+      appId: "1:432074388052:web:07ec04181e2af980b2b3c1",
+      measurementId: "G-GBHF3K1C8P"
+    };
 
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
@@ -327,6 +464,7 @@ const firebaseConfig = {
 
     // Application State
     let currentUser = null;
+    let isAdmin = false;
     let isDarkMode = false;
     let activeTab = 'dashboard';
     let isSidebarOpen = false;
@@ -335,11 +473,13 @@ const firebaseConfig = {
     let isLogActivityModalOpen = false;
     let selectedDate = new Date();
     let filterRunner = 'all';
+    let runnerActivities = {};
 
     // PNG Image URLs
     const BACKGROUND_IMAGE = '6059996227148910161.jpg';
     const BIB_BACKGROUND = '6059996227148910161.jpg';
     const RUNNER_BACKGROUND = '6059996227148910161.jpg';
+    const CALENDAR_BG = '6059996227148910161.jpg';
 
     // DOM Elements
     const app = document.getElementById('app');
@@ -349,7 +489,14 @@ const firebaseConfig = {
       // Check for saved user
       const savedUser = localStorage.getItem('currentUser');
       if (savedUser) {
-        currentUser = JSON.parse(savedUser);
+        const parsedUser = JSON.parse(savedUser);
+        // Check if it's admin login
+        if (parsedUser.isAdmin) {
+          isAdmin = true;
+          currentUser = parsedUser;
+        } else {
+          currentUser = parsedUser;
+        }
       }
       
       // Get total registered runners count
@@ -405,7 +552,7 @@ const firebaseConfig = {
       }, 2000);
     }
 
-    // Login Component with PNG Background
+    // Login Component
     function renderLogin(isRegister = false) {
       app.innerHTML = `
         <div class="min-h-screen mobile-full-height flex items-center justify-center p-4 sm:p-6 relative overflow-hidden" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${BACKGROUND_IMAGE}') center/cover no-repeat fixed;">
@@ -421,6 +568,17 @@ const firebaseConfig = {
                 ${isRegister ? 'Join South Police Run' : 'Runner Login'}
               </h2>
               <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">${isRegister ? 'Register to get your Official Digital Bib' : 'Enter your Bib or Contact Number'}</p>
+              ${!isRegister ? `
+                <div class="mt-4">
+                  <button 
+                    id="adminLoginBtn"
+                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2 mx-auto"
+                  >
+                    <i class="fas fa-user-shield"></i>
+                    Admin Login
+                  </button>
+                </div>
+              ` : ''}
             </div>
 
             <div class="flex flex-col lg:flex-row gap-6 sm:gap-10">
@@ -470,12 +628,12 @@ const firebaseConfig = {
                     </div>
                   ` : `
                     <div class="space-y-1">
-                      <label class="text-[10px] font-black text-white/40 uppercase tracking-widest ml-4">Bib Number / Contact Number *</label>
+                      <label class="text-[10px] font-black text-white/40 uppercase tracking-widest ml-4">Bib Number *</label>
                       <input 
                         required
                         type="text" 
                         id="loginId"
-                        placeholder="BIB-1000 or Contact Number"
+                        placeholder="BIB-1000"
                         class="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-white font-bold placeholder:text-white/20 focus:ring-2 focus:ring-orange-600 focus:border-transparent transition-all text-base"
                       />
                     </div>
@@ -510,7 +668,7 @@ const firebaseConfig = {
                 </div>
               </div>
 
-              <!-- Digital Bib Preview with PNG Background -->
+              <!-- Digital Bib Preview -->
               <div class="lg:w-1/3">
                 <div class="rounded-3xl p-6 sm:p-8 h-full relative overflow-hidden border-4 border-orange-600/50" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${BIB_BACKGROUND}') center/cover no-repeat;">
                   <div class="relative z-10">
@@ -590,6 +748,124 @@ const firebaseConfig = {
       document.getElementById('toggleAuth').addEventListener('click', () => {
         renderLogin(!isRegister);
       });
+      
+      // Admin login button
+      const adminLoginBtn = document.getElementById('adminLoginBtn');
+      if (adminLoginBtn) {
+        adminLoginBtn.addEventListener('click', () => {
+          renderAdminLogin();
+        });
+      }
+    }
+
+    // Admin Login Component
+    function renderAdminLogin() {
+      app.innerHTML = `
+        <div class="min-h-screen mobile-full-height flex items-center justify-center p-4 sm:p-6 relative overflow-hidden" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${BACKGROUND_IMAGE}') center/cover no-repeat fixed;">
+          <!-- Background Overlay -->
+          <div class="absolute inset-0 bg-black/50"></div>
+          
+          <div class="w-full max-w-md bg-white/10 backdrop-blur-xl p-6 sm:p-10 rounded-3xl sm:rounded-[3rem] border border-white/10 shadow-2xl relative z-10 animate-fadeIn mobile-padding">
+            <div class="text-center mb-8 sm:mb-10">
+              <div class="w-12 h-12 sm:w-16 sm:h-16 bg-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-xl shadow-red-600/20">
+                <div class="text-white text-xl sm:text-2xl font-bold">
+                  <i class="fas fa-user-shield"></i>
+                </div>
+              </div>
+              <h2 class="text-2xl sm:text-4xl font-black text-white uppercase tracking-tighter">Admin Login</h2>
+              <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">South Police Run Administration</p>
+            </div>
+
+            <form id="adminAuthForm" class="space-y-4">
+              <div class="space-y-1">
+                <label class="text-[10px] font-black text-white/40 uppercase tracking-widest ml-4">Admin ID</label>
+                <input 
+                  required
+                  type="text" 
+                  id="adminId"
+                  placeholder="Enter Admin ID"
+                  class="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-white font-bold placeholder:text-white/20 focus:ring-2 focus:ring-red-600 focus:border-transparent transition-all text-base"
+                />
+              </div>
+              <div class="space-y-1">
+                <label class="text-[10px] font-black text-white/40 uppercase tracking-widest ml-4">Password</label>
+                <input 
+                  required
+                  type="password" 
+                  id="adminPassword"
+                  placeholder="••••••••"
+                  class="w-full bg-white/5 border border-white/10 rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-white font-bold placeholder:text-white/20 focus:ring-2 focus:ring-red-600 focus:border-transparent transition-all text-base"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                id="submitAdminBtn"
+                class="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 sm:py-5 rounded-2xl mt-4 shadow-xl shadow-red-600/20 transition-all active:scale-95 text-base sm:text-lg"
+              >
+                ADMIN LOGIN
+              </button>
+            </form>
+
+            <div class="mt-6 sm:mt-8 text-center">
+              <button 
+                id="backToLogin"
+                class="text-white/60 hover:text-white text-xs sm:text-sm font-bold uppercase tracking-widest transition-colors"
+              >
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Runner Login
+              </button>
+            </div>
+            
+            <div class="absolute bottom-6 left-0 right-0 text-center">
+              <p class="text-white/30 text-[10px] font-black uppercase tracking-[0.2em]">Administrative Access Only</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Add event listeners
+      document.getElementById('adminAuthForm').addEventListener('submit', handleAdminAuthSubmit);
+      document.getElementById('backToLogin').addEventListener('click', () => {
+        renderLogin(false);
+      });
+    }
+
+    // Handle Admin Authentication
+    async function handleAdminAuthSubmit(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('submitAdminBtn');
+      const adminId = document.getElementById('adminId').value;
+      const adminPassword = document.getElementById('adminPassword').value;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'VERIFYING...';
+
+      try {
+        // Check admin credentials
+        if (adminId === 'Admin' && adminPassword === '8555') {
+          // Set admin user
+          currentUser = {
+            isAdmin: true,
+            name: 'Administrator',
+            nickname: 'Admin',
+            role: 'admin',
+            loginTime: new Date().toISOString()
+          };
+          
+          isAdmin = true;
+          localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          
+          // Show admin dashboard
+          renderMainApp();
+        } else {
+          throw new Error('Invalid admin credentials');
+        }
+      } catch (error) {
+        alert(error.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'ADMIN LOGIN';
+      }
     }
 
     // Generate unique Bib number
@@ -619,7 +895,7 @@ const firebaseConfig = {
           
           // Create user in Firebase Auth
           const userCredential = await auth.createUserWithEmailAndPassword(
-            `${contact}@southpolice.run`,
+            `${bibNumber}@southpolice.run`,
             password
           );
           
@@ -629,6 +905,7 @@ const firebaseConfig = {
             name: name,
             nickname: nickname,
             contact: contact,
+            password: password, // Store password for direct login
             status: 'active',
             registration_date: new Date().toISOString(),
             total_runs: 0,
@@ -648,35 +925,22 @@ const firebaseConfig = {
           showBibAssignment(bibNumber);
           
         } else {
-          // Login with Bib or Contact
-          const loginId = document.getElementById('loginId').value;
+          // Login with Bib number
+          const bibNumber = document.getElementById('loginId').value.toUpperCase();
           const password = document.getElementById('password').value;
           
-          let userData = null;
-          
-          // Try to find by Bib number first
-          const bibSnapshot = await db.ref(`runners/${loginId}`).once('value');
-          if (bibSnapshot.exists()) {
-            userData = bibSnapshot.val();
-          } else {
-            // Try to find by contact number
-            const snapshot = await db.ref('runners').orderByChild('contact').equalTo(loginId).once('value');
-            if (snapshot.exists()) {
-              snapshot.forEach(childSnapshot => {
-                userData = childSnapshot.val();
-              });
-            }
+          // Find runner by Bib number
+          const snapshot = await db.ref(`runners/${bibNumber}`).once('value');
+          if (!snapshot.exists()) {
+            throw new Error('Invalid Bib number');
           }
           
-          if (!userData) {
-            throw new Error('Invalid Bib number or contact number');
-          }
+          const userData = snapshot.val();
           
-          // Login with contact as email
-          const userCredential = await auth.signInWithEmailAndPassword(
-            `${userData.contact}@southpolice.run`,
-            password
-          );
+          // Check password
+          if (userData.password !== password) {
+            throw new Error('Invalid password');
+          }
           
           currentUser = userData;
           localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -691,7 +955,7 @@ const firebaseConfig = {
       }
     }
 
-    // Show Login Success with Digital Bib and PNG Background
+    // Show Login Success with Digital Bib
     function showLoginSuccess(user) {
       app.innerHTML = `
         <div class="min-h-screen mobile-full-height flex items-center justify-center p-4 sm:p-6 relative overflow-hidden" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${BACKGROUND_IMAGE}') center/cover no-repeat fixed;">
@@ -717,7 +981,7 @@ const firebaseConfig = {
               <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">Welcome back to South Police Run Portal</p>
             </div>
             
-            <!-- Digital Bib Card with PNG Background -->
+            <!-- Digital Bib Card -->
             <div class="mb-8 sm:mb-10">
               <div class="rounded-3xl p-6 sm:p-8 relative overflow-hidden border-4 border-orange-600/50" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${BIB_BACKGROUND}') center/cover no-repeat;">
                 <div class="relative z-10">
@@ -779,8 +1043,8 @@ const firebaseConfig = {
                 id="shareBibBtn"
                 class="flex-1 bg-transparent hover:bg-white/10 text-white font-bold py-3 sm:py-4 px-4 sm:px-8 rounded-2xl border-2 border-white/20 transition-all active:scale-95 flex items-center justify-center gap-2 sm:gap-3 text-sm sm:text-base"
               >
-                <i class="fas fa-share-alt"></i>
-                SHARE BIB
+                <i class="fab fa-whatsapp"></i>
+                SHARE BIB VIA WHATSAPP
               </button>
             </div>
           </div>
@@ -796,7 +1060,7 @@ const firebaseConfig = {
       });
 
       document.getElementById('shareBibBtn').addEventListener('click', () => {
-        shareBib(user);
+        shareBibViaWhatsApp(user);
       });
     }
 
@@ -826,7 +1090,103 @@ const firebaseConfig = {
       }
     }
 
-    // Show Bib Assignment with PNG Background
+    // Share Bib via WhatsApp
+    async function shareBibViaWhatsApp(user) {
+      try {
+        // Create Bib card for sharing
+        const bibCard = document.createElement('div');
+        bibCard.style.width = '400px';
+        bibCard.style.height = '600px';
+        bibCard.style.padding = '20px';
+        bibCard.style.background = `linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${BIB_BACKGROUND}') center/cover no-repeat`;
+        bibCard.style.color = 'white';
+        bibCard.style.fontFamily = 'Inter, sans-serif';
+        bibCard.style.borderRadius = '20px';
+        bibCard.style.border = '4px solid #ea580c';
+        bibCard.style.position = 'relative';
+        bibCard.style.overflow = 'hidden';
+        
+        bibCard.innerHTML = `
+          <div style="text-align: center; padding: 20px;">
+            <div style="font-size: 12px; font-weight: 900; color: #f59e0b; letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase;">
+              South Police Run - Digital Bib
+            </div>
+            <div style="font-family: 'Courier New', monospace; font-size: 48px; font-weight: 900; margin: 20px 0; letter-spacing: 4px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
+              ${user.bib_number}
+            </div>
+            <div style="background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); border-radius: 15px; padding: 20px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.2);">
+              <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                <div style="width: 60px; height: 60px; border-radius: 15px; background: linear-gradient(135deg, #ea580c, #f59e0b); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold;">
+                  ${user.nickname ? user.nickname.substring(0, 2).toUpperCase() : 'RU'}
+                </div>
+                <div style="text-align: left;">
+                  <div style="font-size: 20px; font-weight: 900;">${user.name}</div>
+                  <div style="font-size: 16px; color: #f59e0b;">"${user.nickname}"</div>
+                </div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                <div>
+                  <div style="font-size: 12px; color: #ccc;">Contact</div>
+                  <div style="font-size: 14px; font-weight: 600;">${user.contact}</div>
+                </div>
+                <div>
+                  <div style="font-size: 12px; color: #ccc;">Total Distance</div>
+                  <div style="font-size: 14px; font-weight: 600;">${formatNumber(user.total_distance || 0, 1)} km</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top: 20px; font-size: 10px; color: #aaa;">
+              Scan QR code to join South Police Run
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 10px; font-size: 11px;">
+              Powered by South Police Department | Developed by Ahmed Vaseem
+            </div>
+          </div>
+        `;
+        
+        // Add to body temporarily
+        document.body.appendChild(bibCard);
+        
+        // Use html2canvas to create image
+        const canvas = await html2canvas(bibCard, {
+          scale: 2,
+          backgroundColor: null,
+          useCORS: true
+        });
+        
+        // Remove temporary element
+        document.body.removeChild(bibCard);
+        
+        // Convert to data URL
+        const imageData = canvas.toDataURL('image/png');
+        
+        // Create WhatsApp share URL
+        const message = `🏃‍♂️ *South Police Run - My Digital Bib* 🏃‍♂️\n\n` +
+                       `*Bib Number:* ${user.bib_number}\n` +
+                       `*Name:* ${user.name}\n` +
+                       `*Nickname:* ${user.nickname}\n` +
+                       `*Contact:* ${user.contact}\n` +
+                       `*Total Distance:* ${formatNumber(user.total_distance || 0, 1)} km\n\n` +
+                       `Join me at South Police Run! 🏅`;
+        
+        // For WhatsApp Web
+        const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+        
+        // For mobile
+        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          window.open(`whatsapp://send?text=${encodeURIComponent(message)}`, '_blank');
+        } else {
+          // Open in new tab for desktop
+          window.open(whatsappUrl, '_blank');
+        }
+        
+      } catch (error) {
+        console.error('Error sharing Bib:', error);
+        alert('Could not share Bib. Please try again.');
+      }
+    }
+
+    // Show Bib Assignment
     function showBibAssignment(bibNumber) {
       app.innerHTML = `
         <div class="min-h-screen mobile-full-height flex items-center justify-center p-4 sm:p-6 relative overflow-hidden" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${BACKGROUND_IMAGE}') center/cover no-repeat fixed;">
@@ -842,7 +1202,7 @@ const firebaseConfig = {
               <p class="text-white/60 font-medium mt-2 text-sm sm:text-base">Your Digital Runner Bib has been assigned</p>
             </div>
 
-            <!-- Bib Card with PNG Background -->
+            <!-- Bib Card -->
             <div class="rounded-3xl p-6 sm:p-8 mb-6 sm:mb-8 relative overflow-hidden border-4 border-orange-600/50" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${BIB_BACKGROUND}') center/cover no-repeat;">
               <div class="text-center">
                 <p class="text-white/80 text-sm font-bold uppercase tracking-widest mb-2">Your Official Bib Number</p>
@@ -871,13 +1231,14 @@ const firebaseConfig = {
                   CONTINUE TO PORTAL
                 </button>
                 <button 
-                  id="printBibBtn"
-                  class="bg-transparent hover:bg-white/10 text-white font-bold py-3 sm:py-4 px-4 sm:px-8 rounded-2xl border-2 border-white/20 transition-all active:scale-95 text-sm sm:text-base"
+                  id="shareBibWhatsApp"
+                  class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 sm:py-4 px-4 sm:px-8 rounded-2xl transition-all active:scale-95 text-sm sm:text-base flex items-center justify-center gap-2"
                 >
-                  PRINT BIB
+                  <i class="fab fa-whatsapp"></i>
+                  SHARE ON WHATSAPP
                 </button>
               </div>
-              <p class="text-white/40 text-xs mt-4 sm:mt-6">You can also login using your contact number</p>
+              <p class="text-white/40 text-xs mt-4 sm:mt-6">Login using your Bib number and password</p>
             </div>
           </div>
         </div>
@@ -888,8 +1249,8 @@ const firebaseConfig = {
         renderMainApp();
       });
 
-      document.getElementById('printBibBtn').addEventListener('click', () => {
-        window.print();
+      document.getElementById('shareBibWhatsApp').addEventListener('click', () => {
+        shareBibViaWhatsApp(currentUser);
       });
     }
 
@@ -958,29 +1319,17 @@ const firebaseConfig = {
       `;
     }
 
-    // Share Bib function
-    function shareBib(user) {
-      if (navigator.share) {
-        navigator.share({
-          title: 'My South Police Run Digital Bib',
-          text: `Check out my South Police Run Digital Bib! I'm ${user.name} (${user.nickname}) with Bib Number ${user.bib_number}`,
-          url: window.location.href
-        });
+    // Main Application
+    function renderMainApp() {
+      if (isAdmin) {
+        renderAdminDashboard();
       } else {
-        const text = `🏃‍♂️ South Police Run Digital Bib\n\nName: ${user.name}\nNickname: ${user.nickname}\nBib Number: ${user.bib_number}\n\nJoin me at South Police Run!`;
-        
-        navigator.clipboard.writeText(text)
-          .then(() => {
-            alert('Bib details copied to clipboard!');
-          })
-          .catch(() => {
-            alert('Could not copy Bib details. Please try again.');
-          });
+        renderRunnerDashboard();
       }
     }
 
-    // Main Application
-    function renderMainApp() {
+    // Render Runner Dashboard
+    function renderRunnerDashboard() {
       app.innerHTML = `
         <div class="min-h-screen ${isDarkMode ? 'dark' : ''} mobile-full-height">
           <!-- Header -->
@@ -1030,7 +1379,7 @@ const firebaseConfig = {
             </div>
           </main>
 
-          <!-- Mobile Bottom Navigation with Plus Icon for Log Activity -->
+          <!-- Mobile Bottom Navigation -->
           <div class="sm:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-800 border-t border-gray-200 dark:border-zinc-700 flex justify-around py-3 z-30">
             ${[
               { id: 'dashboard', icon: 'fas fa-home', label: 'Home' },
@@ -1087,13 +1436,154 @@ const firebaseConfig = {
       renderContent();
     }
 
-    // Sidebar Component with Activity Feed instead of Medals
+    // Render Admin Dashboard
+    function renderAdminDashboard() {
+      app.innerHTML = `
+        <div class="min-h-screen ${isDarkMode ? 'dark' : ''} mobile-full-height">
+          <!-- Header -->
+          <header class="fixed top-0 left-0 right-0 h-14 sm:h-16 bg-gradient-to-r from-red-700 to-red-800 shadow-lg z-50 flex items-center justify-between px-3 sm:px-4 md:px-8">
+            <div class="flex items-center gap-2 sm:gap-3">
+              <button id="sidebarToggle" class="p-1.5 sm:p-2 hover:bg-red-600 rounded-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+              </button>
+              <div class="hidden sm:flex items-center gap-2">
+                <div class="text-white text-xl sm:text-2xl">
+                  <i class="fas fa-user-shield"></i>
+                </div>
+                <h1 class="text-lg sm:text-xl font-black text-white uppercase tracking-tighter">Admin Dashboard</h1>
+              </div>
+              <div class="flex items-center gap-1 bg-yellow-500 text-white text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full animate-pulse">
+                <div class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-white rounded-full"></div>
+                ADMIN
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1 sm:gap-2 md:gap-4">
+              <div class="hidden sm:flex items-center gap-2 bg-red-600/30 p-1 pr-2 sm:p-1.5 sm:pr-3 rounded-full border border-red-400/50">
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-red-600 to-red-500 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                  <i class="fas fa-user-cog text-xs"></i>
+                </div>
+                <div class="hidden md:block">
+                  <p class="text-xs font-bold leading-tight text-white">Administrator</p>
+                  <p class="text-[10px] text-red-200 font-black">Super Admin</p>
+                </div>
+              </div>
+
+              <button id="logoutBtn" class="p-1.5 sm:p-2 text-white hover:bg-red-600 rounded-lg transition-colors" title="Logout">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          <!-- Admin Sidebar -->
+          ${renderAdminSidebar()}
+
+          <!-- Main Content -->
+          <main class="flex-1 transition-all duration-300 mt-14 sm:mt-16 p-3 sm:p-4 md:p-8 ${isSidebarOpen ? 'md:ml-64' : ''}">
+            <div class="max-w-7xl mx-auto">
+              <div id="content"></div>
+            </div>
+          </main>
+        </div>
+      `;
+
+      // Add event listeners
+      document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+      document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+
+      // Initial content render
+      renderAdminContent();
+    }
+
+    // Admin Sidebar Component
+    function renderAdminSidebar() {
+      const menuItems = [
+        { id: 'adminDashboard', label: 'Dashboard', icon: 'fas fa-tachometer-alt' },
+        { id: 'manageRunners', label: 'Manage Runners', icon: 'fas fa-users' },
+        { id: 'manageActivities', label: 'Manage Activities', icon: 'fas fa-running' },
+        { id: 'pendingApprovals', label: 'Pending Approvals', icon: 'fas fa-clock' },
+        { id: 'adminReports', label: 'Reports', icon: 'fas fa-chart-bar' }
+      ];
+
+      return `
+        ${isSidebarOpen ? `
+          <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[55] md:hidden" id="sidebarOverlay"></div>
+        ` : ''}
+        <aside class="fixed top-14 sm:top-16 left-0 bottom-0 w-64 bg-zinc-900 text-white z-[60] transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 overflow-y-auto border-r border-zinc-800 hide-scrollbar">
+          <div class="p-4 sm:p-6">
+            <div class="flex items-center gap-3 mb-6 sm:mb-8">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-red-600 to-red-500 flex items-center justify-center text-base sm:text-lg">
+                <i class="fas fa-user-shield"></i>
+              </div>
+              <div>
+                <p class="font-bold text-sm truncate w-32">Administrator</p>
+                <p class="text-xs text-red-400 font-semibold">Super Admin</p>
+                <p class="text-xs text-gray-400 mt-1">Full Access</p>
+              </div>
+            </div>
+
+            <nav class="space-y-1 mb-6 sm:mb-8">
+              ${menuItems.map(item => `
+                <button
+                  data-tab="${item.id}"
+                  class="sidebar-tab-btn w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all ${activeTab === item.id ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'text-gray-400 hover:bg-zinc-800 hover:text-white'}"
+                >
+                  <i class="${item.icon} w-5 text-center"></i>
+                  <span class="font-medium text-sm">${item.label}</span>
+                </button>
+              `).join('')}
+            </nav>
+            
+            <!-- Admin Stats -->
+            <div class="mb-6 sm:mb-8">
+              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 sm:mb-4">System Overview</p>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between p-2 bg-zinc-800/50 rounded-lg">
+                  <span class="text-xs text-gray-300">Total Runners</span>
+                  <span class="text-sm font-bold text-white" id="adminTotalRunners">0</span>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-zinc-800/50 rounded-lg">
+                  <span class="text-xs text-gray-300">Pending Activities</span>
+                  <span class="text-sm font-bold text-yellow-400" id="adminPendingActivities">0</span>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-zinc-800/50 rounded-lg">
+                  <span class="text-xs text-gray-300">Total Distance</span>
+                  <span class="text-sm font-bold text-green-400" id="adminTotalDistance">0 km</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="absolute bottom-6 left-4 right-4 sm:left-6 sm:right-6 p-3 sm:p-4 bg-zinc-800 rounded-2xl border border-zinc-700">
+            <div class="flex items-center justify-between mb-3 sm:mb-4">
+              <div>
+                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Admin Controls</p>
+                <p class="text-base sm:text-lg font-black text-red-500">Full Access</p>
+              </div>
+              <div class="p-1.5 sm:p-2 bg-zinc-700 rounded-lg">
+                <div class="text-red-500 text-lg sm:text-xl">
+                  <i class="fas fa-shield-alt"></i>
+                </div>
+              </div>
+            </div>
+            <button id="sidebarLogout" class="w-full py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white text-xs font-bold rounded-lg border border-red-500/20 transition-all">
+              Sign Out
+            </button>
+          </div>
+        </aside>
+      `;
+    }
+
+    // Sidebar Component for Runners
     function renderSidebar() {
       const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-home' },
         { id: 'feed', label: 'Activity Feed', icon: 'fas fa-newspaper' },
         { id: 'ranking', label: 'Runners Ranking', icon: 'fas fa-trophy' },
-        { id: 'leaderboard', label: '100km Leaders', icon: 'fas fa-crown' },
         { id: 'activities', label: 'My Activities', icon: 'fas fa-history' }
       ];
 
@@ -1126,7 +1616,7 @@ const firebaseConfig = {
               `).join('')}
             </nav>
             
-            <!-- Digital Bib in Sidebar with PNG Background -->
+            <!-- Digital Bib in Sidebar -->
             <div class="mb-6 sm:mb-8 rounded-2xl p-3 sm:p-4 relative overflow-hidden border-2 border-orange-600/50" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${RUNNER_BACKGROUND}') center/cover no-repeat;">
               <div class="relative z-10">
                 <p class="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-2 text-center">Your Digital Bib</p>
@@ -1135,7 +1625,7 @@ const firebaseConfig = {
                 <div class="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-orange-500/30">
                   <div class="flex items-center justify-between mb-1">
                     <span class="text-xs text-orange-300">Total Distance</span>
-                    <span class="text-sm font-bold text-white">${(currentUser.total_distance || 0).toFixed(1)} km</span>
+                    <span class="text-sm font-bold text-white">${formatNumber(currentUser.total_distance || 0, 1)} km</span>
                   </div>
                   <div class="w-full bg-white/10 rounded-full h-1.5 mb-2">
                     <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-1.5 rounded-full" style="width: ${Math.min(100, ((currentUser.total_distance || 0) / 100) * 100)}%"></div>
@@ -1147,14 +1637,19 @@ const firebaseConfig = {
               </div>
             </div>
 
-            <!-- Recent Activities in Sidebar -->
+            <!-- Ranking Section in Sidebar -->
             <div class="mb-6 sm:mb-8">
-              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 sm:mb-4">Recent Activities</p>
-              <div id="sidebarActivities" class="space-y-2">
-                <div class="text-center py-4">
-                  <div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-orange-600 border-t-transparent"></div>
-                  <p class="text-xs text-gray-400 mt-2">Loading activities...</p>
-                </div>
+              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 sm:mb-4">Your Ranking</p>
+              <div id="sidebarRanking">
+                <!-- Will be loaded via JavaScript -->
+              </div>
+            </div>
+
+            <!-- Medal Progress in Sidebar -->
+            <div class="mb-6 sm:mb-8">
+              <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 sm:mb-4">Medal Progress</p>
+              <div id="sidebarMedals">
+                <!-- Will be loaded via JavaScript -->
               </div>
             </div>
           </div>
@@ -1163,7 +1658,7 @@ const firebaseConfig = {
             <div class="flex items-center justify-between mb-3 sm:mb-4">
               <div>
                 <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Total Distance</p>
-                <p class="text-base sm:text-lg font-black text-orange-500">${(currentUser.total_distance || 0).toFixed(1)} km</p>
+                <p class="text-base sm:text-lg font-black text-orange-500">${formatNumber(currentUser.total_distance || 0, 1)} km</p>
               </div>
               <div class="p-1.5 sm:p-2 bg-zinc-700 rounded-lg">
                 <div class="text-orange-500 text-lg sm:text-xl">🏃‍♂️</div>
@@ -1176,73 +1671,175 @@ const firebaseConfig = {
         </aside>
       `;
 
-      // Load sidebar activities
-      setTimeout(() => loadSidebarActivities(), 100);
+      // Load sidebar ranking and medals
+      setTimeout(() => {
+        loadSidebarRanking();
+        loadSidebarMedals();
+      }, 100);
     }
 
-    // Load sidebar activities
-    async function loadSidebarActivities() {
-      const sidebarActivities = document.getElementById('sidebarActivities');
-      if (!sidebarActivities) return;
+    // Fix for number formatting
+    function formatNumber(value, decimals = 1) {
+      // Convert to number if it's a string
+      const num = typeof value === 'string' ? parseFloat(value) : value;
+      
+      // Check if it's a valid number
+      if (isNaN(num)) {
+        return '0.0';
+      }
+      
+      return num.toFixed(decimals);
+    }
+
+    // Load sidebar ranking
+    async function loadSidebarRanking() {
+      const sidebarRanking = document.getElementById('sidebarRanking');
+      if (!sidebarRanking) return;
 
       try {
-        const snapshot = await db.ref('running_logs').orderByChild('date').limitToLast(3).once('value');
-        const activities = [];
+        const snapshot = await db.ref('runners').once('value');
+        const runners = [];
         
         snapshot.forEach(childSnapshot => {
-          const activity = childSnapshot.val();
-          activity.id = childSnapshot.key;
-          activities.push(activity);
+          const runner = childSnapshot.val();
+          runners.push(runner);
         });
 
-        // Sort by date (newest first)
-        activities.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        if (activities.length === 0) {
-          sidebarActivities.innerHTML = `
+        // Sort by total distance
+        runners.sort((a, b) => (parseFloat(b.total_distance) || 0) - (parseFloat(a.total_distance) || 0));
+        
+        // Find current user's rank
+        const userIndex = runners.findIndex(runner => runner.bib_number === currentUser.bib_number);
+        const userRank = userIndex + 1;
+        const totalRunners = runners.length;
+        
+        if (userIndex === -1) {
+          sidebarRanking.innerHTML = `
             <div class="text-center py-2">
-              <p class="text-xs text-gray-400">No recent activities</p>
+              <p class="text-xs text-gray-400">Rank not available</p>
             </div>
           `;
           return;
         }
 
-        sidebarActivities.innerHTML = activities.map(activity => {
-          const activityDate = new Date(activity.date);
-          const formattedDate = activityDate.toLocaleDateString('en-GB', { 
-            day: 'numeric', 
-            month: 'short' 
-          });
-          
-          return `
-            <div class="bg-zinc-800/50 p-2.5 sm:p-3 rounded-xl">
-              <div class="flex items-center justify-between mb-1">
-                <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full bg-orange-600/20 flex items-center justify-center">
-                    <i class="fas fa-running text-xs text-orange-400"></i>
-                  </div>
-                  <p class="text-xs font-medium truncate max-w-[100px]">${activity.nickname || activity.runner_name}</p>
+        const percentage = Math.round((userRank / totalRunners) * 100);
+        const progressWidth = Math.max(5, Math.min(95, percentage));
+        
+        sidebarRanking.innerHTML = `
+          <div class="bg-zinc-800/50 p-3 sm:p-4 rounded-xl">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full ${
+                  userRank === 1 ? 'crown-gold' : 
+                  userRank === 2 ? 'crown-silver' : 
+                  userRank === 3 ? 'crown-bronze' : 
+                  'bg-orange-600/20'
+                } flex items-center justify-center">
+                  <i class="fas fa-trophy text-xs ${
+                    userRank === 1 ? 'text-yellow-400' : 
+                    userRank === 2 ? 'text-gray-300' : 
+                    userRank === 3 ? 'text-amber-700' : 
+                    'text-orange-400'
+                  }"></i>
                 </div>
-                <span class="text-[10px] text-gray-400">${formattedDate}</span>
+                <div>
+                  <p class="text-sm font-bold text-white">Rank #${userRank}</p>
+                  <p class="text-xs text-gray-400">out of ${totalRunners} runners</p>
+                </div>
               </div>
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-orange-400">${activity.distance} km</span>
-                <span class="text-[10px] text-gray-400">${activity.duration} min</span>
+              <div class="text-right">
+                <p class="text-lg font-black text-white">${formatNumber(currentUser.total_distance || 0, 1)}</p>
+                <p class="text-xs text-gray-400">km</p>
               </div>
             </div>
-          `;
-        }).join('');
+            
+            <!-- Progress bar -->
+            <div class="mt-2">
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-400">Top ${percentage}%</span>
+                <span class="text-orange-400">#${userRank}</span>
+              </div>
+              <div class="w-full bg-zinc-700 rounded-full h-2">
+                <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-2 rounded-full" style="width: ${progressWidth}%"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-gray-500 mt-1">
+                <span>#1</span>
+                <span>#${totalRunners}</span>
+              </div>
+            </div>
+          </div>
+        `;
       } catch (error) {
-        console.error('Error loading sidebar activities:', error);
-        sidebarActivities.innerHTML = `
+        console.error('Error loading sidebar ranking:', error);
+        sidebarRanking.innerHTML = `
           <div class="text-center py-2">
-            <p class="text-xs text-gray-400">Error loading activities</p>
+            <p class="text-xs text-gray-400">Error loading ranking</p>
           </div>
         `;
       }
     }
 
-    // Content Renderer
+    // Load sidebar medals progress
+    function loadSidebarMedals() {
+      const sidebarMedals = document.getElementById('sidebarMedals');
+      if (!sidebarMedals) return;
+
+      try {
+        const totalDistance = parseFloat(currentUser.total_distance) || 0;
+        const medalGoals = [
+          { distance: 50, name: "Bronze", color: "bronze", icon: "fas fa-medal" },
+          { distance: 100, name: "Silver", color: "silver", icon: "fas fa-medal" },
+          { distance: 250, name: "Gold", color: "gold", icon: "fas fa-medal" },
+          { distance: 500, name: "Platinum", color: "platinum", icon: "fas fa-gem" },
+          { distance: 1000, name: "Diamond", color: "diamond", icon: "fas fa-gem" }
+        ];
+
+        let medalsHTML = '';
+        
+        medalGoals.forEach(medal => {
+          const progress = Math.min(100, Math.round((totalDistance / medal.distance) * 100));
+          const isEarned = totalDistance >= medal.distance;
+          const isCurrent = totalDistance < medal.distance && 
+                          (medalGoals.indexOf(medal) === 0 || 
+                           totalDistance >= medalGoals[medalGoals.indexOf(medal) - 1].distance);
+          
+          medalsHTML += `
+            <div class="medal-progress-item">
+              <div class="flex items-center gap-3">
+                <div class="medal-icon ${isEarned ? `medal-${medal.color}` : 'bg-zinc-700'}">
+                  <i class="${medal.icon} ${isEarned ? 'text-white' : 'text-gray-500'}"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-medium text-white">${medal.name}</p>
+                  <p class="text-[10px] text-gray-400">${medal.distance} km</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="text-xs font-bold ${isEarned ? 'text-green-400' : isCurrent ? 'text-orange-400' : 'text-gray-400'}">
+                  ${isEarned ? 'Earned' : `${progress}%`}
+                </p>
+                <p class="text-[10px] text-gray-500">${isEarned ? '✓' : `${formatNumber(totalDistance, 1)}/${medal.distance}`}</p>
+              </div>
+            </div>
+            
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" style="width: ${progress}%"></div>
+            </div>
+          `;
+        });
+
+        sidebarMedals.innerHTML = medalsHTML;
+      } catch (error) {
+        console.error('Error loading sidebar medals:', error);
+        sidebarMedals.innerHTML = `
+          <div class="text-center py-2">
+            <p class="text-xs text-gray-400">Error loading medals</p>
+          </div>
+        `;
+      }
+    }
+
+    // Content Renderer for Runners
     function renderContent() {
       const content = document.getElementById('content');
       if (!content) return;
@@ -1257,9 +1854,6 @@ const firebaseConfig = {
         case 'ranking':
           renderRanking(content);
           break;
-        case 'leaderboard':
-          renderLeaderboard(content);
-          break;
         case 'activities':
           renderMyActivities(content);
           break;
@@ -1271,7 +1865,36 @@ const firebaseConfig = {
       updateSidebarButtons();
     }
 
-    // Dashboard Component with Date Filter and Runner Filter
+    // Content Renderer for Admin
+    function renderAdminContent() {
+      const content = document.getElementById('content');
+      if (!content) return;
+
+      switch (activeTab) {
+        case 'adminDashboard':
+          renderAdminDashboardContent(content);
+          break;
+        case 'manageRunners':
+          renderManageRunners(content);
+          break;
+        case 'manageActivities':
+          renderManageActivities(content);
+          break;
+        case 'pendingApprovals':
+          renderPendingApprovals(content);
+          break;
+        case 'adminReports':
+          renderAdminReports(content);
+          break;
+        default:
+          renderAdminDashboardContent(content);
+      }
+
+      // Update sidebar buttons
+      updateSidebarButtons();
+    }
+
+    // Dashboard Component for Runners
     async function renderDashboard(container) {
       // Fetch user stats from Firebase
       const snapshot = await db.ref(`runners/${currentUser.bib_number}`).once('value');
@@ -1287,7 +1910,7 @@ const firebaseConfig = {
             bib_number: runner.bib_number,
             name: runner.name,
             nickname: runner.nickname,
-            total_distance: runner.total_distance || 0
+            total_distance: parseFloat(runner.total_distance) || 0
           });
         });
         
@@ -1299,7 +1922,7 @@ const firebaseConfig = {
 
       container.innerHTML = `
         <div class="space-y-4 sm:space-y-6 animate-fadeIn">
-          <!-- Digital Bib Card with PNG Background -->
+          <!-- Digital Bib Card -->
           <div class="rounded-3xl p-4 sm:p-6 relative overflow-hidden border-4 border-orange-600/50" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${BIB_BACKGROUND}') center/cover no-repeat;">
             <div class="relative z-10">
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
@@ -1328,16 +1951,16 @@ const firebaseConfig = {
               <div class="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-orange-500/30">
                 <div class="text-center mb-3">
                   <p class="text-xs text-orange-300 uppercase tracking-widest font-bold mb-1">Cumulative Distance</p>
-                  <div class="text-2xl sm:text-3xl md:text-4xl font-black text-white">${(currentUser.total_distance || 0).toFixed(1)} <span class="text-base sm:text-lg text-orange-300">km</span></div>
+                  <div class="text-2xl sm:text-3xl md:text-4xl font-black text-white">${formatNumber(currentUser.total_distance || 0, 1)} <span class="text-base sm:text-lg text-orange-300">km</span></div>
                 </div>
                 
                 <div class="space-y-2">
                   <div class="flex justify-between text-xs">
                     <span class="text-orange-300">Progress to 100km</span>
-                    <span class="text-white font-bold">${Math.min(100, Math.round((currentUser.total_distance || 0) / 100 * 100))}%</span>
+                    <span class="text-white font-bold">${Math.min(100, Math.round((parseFloat(currentUser.total_distance) || 0) / 100 * 100))}%</span>
                   </div>
                   <div class="w-full bg-white/10 rounded-full h-2">
-                    <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-2 rounded-full" style="width: ${Math.min(100, ((currentUser.total_distance || 0) / 100) * 100)}%"></div>
+                    <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-2 rounded-full" style="width: ${Math.min(100, ((parseFloat(currentUser.total_distance) || 0) / 100) * 100)}%"></div>
                   </div>
                   <div class="flex justify-between text-[10px] text-orange-300">
                     <span>0 km</span>
@@ -1377,13 +2000,13 @@ const firebaseConfig = {
           <!-- Filters Section -->
           <div class="bg-white dark:bg-zinc-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-700">
             <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
-              <!-- Date Filter -->
+              <!-- Date Filter with Calendar Background -->
               <div class="flex-1">
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Filter by Date</label>
                 <div class="calendar-container">
-                  <div class="calendar-input flex items-center justify-between">
-                    <span id="selectedDateDisplay">${formatDate(selectedDate)}</span>
-                    <i class="fas fa-calendar-alt text-gray-400"></i>
+                  <div class="calendar-input flex items-center justify-between calendar-bg">
+                    <span id="selectedDateDisplay" class="text-white">${formatDate(selectedDate)}</span>
+                    <i class="fas fa-calendar-alt text-orange-400"></i>
                   </div>
                   <div id="calendarPopup" class="calendar-popup hidden">
                     <div class="calendar-header">
@@ -1458,7 +2081,7 @@ const firebaseConfig = {
                 <i class="fas fa-route text-sm sm:text-base"></i>
               </div>
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400">Total Distance</p>
-              <p class="text-lg sm:text-xl font-black mt-1 dark:text-white">${(userData.total_distance || 0).toFixed(1)} km</p>
+              <p class="text-lg sm:text-xl font-black mt-1 dark:text-white">${formatNumber(userData.total_distance || 0, 1)} km</p>
             </div>
             <div class="bg-white dark:bg-zinc-800 p-3 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-700 hover:shadow-md transition-shadow group">
               <div class="bg-green-600 w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center text-white mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
@@ -1472,44 +2095,23 @@ const firebaseConfig = {
                 <i class="fas fa-tachometer-alt text-sm sm:text-base"></i>
               </div>
               <p class="text-xs font-semibold text-gray-500 dark:text-gray-400">Avg Pace</p>
-              <p class="text-lg sm:text-xl font-black mt-1 dark:text-white">${(userData.avg_pace || 0).toFixed(1)} min/km</p>
+              <p class="text-lg sm:text-xl font-black mt-1 dark:text-white">${formatNumber(userData.avg_pace || 0, 1)} min/km</p>
             </div>
           </div>
 
-          <!-- Registered Runners List -->
-          <div class="bg-white dark:bg-zinc-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-700">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="font-bold dark:text-white">Registered Runners</h3>
-              <span class="text-xs font-bold bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-2 py-1 rounded-full">
-                ${allRunners.length} Runners
-              </span>
-            </div>
-            <div class="space-y-3 max-h-60 overflow-y-auto">
-              ${allRunners.slice(0, 5).map(runner => `
-                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-xl">
-                  <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white text-xs font-bold">
-                      ${runner.nickname ? runner.nickname.substring(0, 2).toUpperCase() : 'RU'}
-                    </div>
-                    <div>
-                      <p class="text-sm font-bold dark:text-white">${runner.name}</p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">${runner.bib_number}</p>
-                    </div>
-                  </div>
-                  <div class="text-right">
-                    <p class="text-sm font-bold dark:text-white">${runner.total_distance.toFixed(1)} km</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">Total</p>
-                  </div>
-                </div>
-              `).join('')}
-              
-              ${allRunners.length > 5 ? `
-                <div class="text-center pt-2">
-                  <p class="text-sm text-gray-500 dark:text-gray-400">
-                    +${allRunners.length - 5} more runners
-                  </p>
-                </div>
-              ` : ''}
+          <!-- Additional Info Section (Removed Registered Runners) -->
+          <div class="bg-gradient-to-r from-orange-600 to-amber-500 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg text-white">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-black mb-1">Ready for Your Next Run?</h3>
+                <p class="text-sm text-orange-100">Log your activity and join the leaderboard!</p>
+              </div>
+              <button 
+                id="quickLogActivity"
+                class="bg-white text-orange-600 hover:bg-orange-50 font-bold px-4 py-2 rounded-xl transition-all"
+              >
+                Log Activity
+              </button>
             </div>
           </div>
         </div>
@@ -1530,31 +2132,1674 @@ const firebaseConfig = {
       document.getElementById('runnerFilter').addEventListener('change', (e) => {
         filterRunner = e.target.value;
       });
-    }
-
-    // Format date for display
-    function formatDate(date) {
-      return date.toLocaleDateString('en-GB', { 
-        day: 'numeric', 
-        month: 'short', 
-        year: 'numeric' 
+      
+      document.getElementById('quickLogActivity').addEventListener('click', () => {
+        isLogActivityModalOpen = true;
+        renderLogActivityModal();
       });
     }
 
-    // Initialize calendar
-    function initializeCalendar() {
+    // Admin Dashboard Content
+    async function renderAdminDashboardContent(container) {
+      // Load admin stats
+      let totalRunners = 0;
+      let pendingActivities = 0;
+      let totalDistance = 0;
+      let recentActivities = [];
+
+      try {
+        // Get runners count
+        const runnersSnapshot = await db.ref('runners').once('value');
+        totalRunners = runnersSnapshot.numChildren();
+        
+        // Get activities stats
+        const activitiesSnapshot = await db.ref('running_logs').once('value');
+        activitiesSnapshot.forEach(childSnapshot => {
+          const activity = childSnapshot.val();
+          
+          // Count pending activities
+          if (activity.status === 'pending') {
+            pendingActivities++;
+          }
+          
+          // Calculate total distance
+          if (activity.distance && activity.status === 'approved') {
+            totalDistance += parseFloat(activity.distance) || 0;
+          }
+          
+          // Get recent activities
+          recentActivities.push({
+            id: childSnapshot.key,
+            ...activity
+          });
+        });
+        
+        // Sort activities by date
+        recentActivities.sort((a, b) => new Date(b.date) - new Date(a.date));
+        recentActivities = recentActivities.slice(0, 5);
+        
+      } catch (error) {
+        console.error('Error loading admin stats:', error);
+      }
+
+      // Update sidebar stats
+      setTimeout(() => {
+        const adminTotalRunners = document.getElementById('adminTotalRunners');
+        const adminPendingActivities = document.getElementById('adminPendingActivities');
+        const adminTotalDistance = document.getElementById('adminTotalDistance');
+        
+        if (adminTotalRunners) adminTotalRunners.textContent = totalRunners;
+        if (adminPendingActivities) adminPendingActivities.textContent = pendingActivities;
+        if (adminTotalDistance) adminTotalDistance.textContent = `${formatNumber(totalDistance, 1)} km`;
+      }, 100);
+
+      container.innerHTML = `
+        <div class="space-y-4 sm:space-y-6 animate-fadeIn">
+          <!-- Admin Welcome -->
+          <div>
+            <h2 class="text-xl sm:text-2xl md:text-3xl font-black tracking-tight dark:text-white">Welcome, Administrator! <i class="fas fa-user-shield text-red-600"></i></h2>
+            <p class="text-gray-500 dark:text-gray-400 font-medium text-sm sm:text-base">South Police Run Administration Dashboard</p>
+          </div>
+
+          <!-- Admin Stats Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div class="bg-gradient-to-br from-red-600 to-red-700 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg text-white">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-semibold text-red-200">Total Runners</p>
+                  <p class="text-2xl sm:text-3xl font-black mt-1">${totalRunners}</p>
+                </div>
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <i class="fas fa-users text-lg sm:text-xl"></i>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gradient-to-br from-yellow-600 to-yellow-700 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg text-white">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-semibold text-yellow-200">Pending Approvals</p>
+                  <p class="text-2xl sm:text-3xl font-black mt-1">${pendingActivities}</p>
+                </div>
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <i class="fas fa-clock text-lg sm:text-xl"></i>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gradient-to-br from-green-600 to-green-700 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg text-white">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-semibold text-green-200">Total Distance</p>
+                  <p class="text-2xl sm:text-3xl font-black mt-1">${formatNumber(totalDistance, 1)} km</p>
+                </div>
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <i class="fas fa-route text-lg sm:text-xl"></i>
+                </div>
+              </div>
+            </div>
+            <div class="bg-gradient-to-br from-blue-600 to-blue-700 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg text-white">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-semibold text-blue-200">Active Today</p>
+                  <p class="text-2xl sm:text-3xl font-black mt-1">${recentActivities.length}</p>
+                </div>
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <i class="fas fa-running text-lg sm:text-xl"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="bg-white dark:bg-zinc-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-700">
+            <h3 class="font-bold dark:text-white mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button 
+                data-tab="pendingApprovals"
+                class="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-700 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-yellow-100 dark:bg-yellow-800 flex items-center justify-center">
+                    <i class="fas fa-clock text-yellow-600 dark:text-yellow-400"></i>
+                  </div>
+                  <div>
+                    <p class="font-bold dark:text-white">Review Pending</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">${pendingActivities} activities</p>
+                  </div>
+                </div>
+              </button>
+              <button 
+                data-tab="manageRunners"
+                class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-800 flex items-center justify-center">
+                    <i class="fas fa-users text-blue-600 dark:text-blue-400"></i>
+                  </div>
+                  <div>
+                    <p class="font-bold dark:text-white">Manage Runners</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">${totalRunners} runners</p>
+                  </div>
+                </div>
+              </button>
+              <button 
+                data-tab="adminReports"
+                class="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors text-left"
+              >
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-800 flex items-center justify-center">
+                    <i class="fas fa-chart-bar text-green-600 dark:text-green-400"></i>
+                  </div>
+                  <div>
+                    <p class="font-bold dark:text-white">View Reports</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Analytics & insights</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Recent Activities -->
+          <div class="bg-white dark:bg-zinc-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-700">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold dark:text-white">Recent Activities</h3>
+              <button 
+                data-tab="manageActivities"
+                class="text-sm text-red-600 dark:text-red-400 font-bold hover:underline"
+              >
+                View All
+              </button>
+            </div>
+            <div class="space-y-3">
+              ${recentActivities.length > 0 ? recentActivities.map(activity => {
+                const activityDate = new Date(activity.date);
+                const formattedDate = activityDate.toLocaleDateString('en-GB', { 
+                  day: 'numeric', 
+                  month: 'short' 
+                });
+                
+                return `
+                  <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-xl">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white text-xs font-bold">
+                        ${activity.nickname ? activity.nickname.substring(0, 2).toUpperCase() : 'RU'}
+                      </div>
+                      <div>
+                        <p class="text-sm font-bold dark:text-white">${activity.nickname || activity.runner_name}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">${activity.bib_number} • ${formattedDate}</p>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-sm font-bold dark:text-white">${activity.distance} km</p>
+                      <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                        activity.status === 'approved' ? 'status-approved' : 
+                        activity.status === 'pending' ? 'status-pending' : 
+                        'status-rejected'
+                      }">
+                        ${activity.status || 'pending'}
+                      </span>
+                    </div>
+                  </div>
+                `;
+              }).join('') : `
+                <div class="text-center py-6">
+                  <p class="text-gray-500 dark:text-gray-400">No recent activities found</p>
+                </div>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Add event listeners for quick actions
+      document.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          activeTab = btn.dataset.tab;
+          renderAdminContent();
+        });
+      });
+    }
+
+    // Manage Runners Component
+    async function renderManageRunners(container) {
+      container.innerHTML = `
+        <div class="animate-fadeIn">
+          <div class="flex justify-between items-center mb-4 sm:mb-6">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black tracking-tight dark:text-white">Manage Runners</h2>
+              <p class="text-gray-500 dark:text-gray-400 text-sm">View and manage all registered runners</p>
+            </div>
+            <button 
+              id="refreshRunners"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2"
+            >
+              <i class="fas fa-sync-alt"></i>
+              Refresh
+            </button>
+          </div>
+          
+          <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-200 dark:border-zinc-700 overflow-hidden">
+            <div class="p-3 sm:p-4 border-b border-gray-200 dark:border-zinc-700">
+              <div class="grid grid-cols-12 gap-2 sm:gap-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
+                <div class="col-span-2 sm:col-span-1">#</div>
+                <div class="col-span-4 sm:col-span-3">Runner</div>
+                <div class="col-span-3 sm:col-span-2">Bib Number</div>
+                <div class="col-span-3 sm:col-span-2 text-center">Distance</div>
+                <div class="hidden sm:block col-span-2 text-center">Runs</div>
+                <div class="hidden sm:block col-span-2 text-center">Actions</div>
+              </div>
+            </div>
+            <div id="runnersList" class="divide-y divide-gray-100 dark:divide-zinc-700">
+              <div class="p-4 text-center">
+                <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-red-600 border-t-transparent"></div>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading runners...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Load runners
+      loadRunnersList();
+
+      // Refresh button
+      document.getElementById('refreshRunners').addEventListener('click', loadRunnersList);
+    }
+
+    // Load runners list for admin
+    async function loadRunnersList() {
+      const runnersList = document.getElementById('runnersList');
+      if (!runnersList) return;
+
+      try {
+        const snapshot = await db.ref('runners').once('value');
+        const runners = [];
+        
+        snapshot.forEach(childSnapshot => {
+          const runner = childSnapshot.val();
+          runners.push(runner);
+        });
+
+        // Sort by registration date (newest first)
+        runners.sort((a, b) => new Date(b.registration_date) - new Date(a.registration_date));
+        
+        if (runners.length === 0) {
+          runnersList.innerHTML = `
+            <div class="p-6 sm:p-8 text-center">
+              <p class="text-gray-500 dark:text-gray-400">No runners found</p>
+            </div>
+          `;
+          return;
+        }
+
+        runnersList.innerHTML = runners.map((runner, index) => {
+          return `
+            <div class="p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors">
+              <div class="grid grid-cols-12 gap-2 sm:gap-4 items-center">
+                <div class="col-span-2 sm:col-span-1">
+                  <div class="text-sm font-bold dark:text-white">${index + 1}</div>
+                </div>
+                <div class="col-span-4 sm:col-span-3">
+                  <div class="flex items-center gap-2 sm:gap-3">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white text-xs sm:text-sm font-bold">
+                      ${runner.nickname ? runner.nickname.substring(0, 2).toUpperCase() : 'RU'}
+                    </div>
+                    <div class="truncate">
+                      <p class="font-bold dark:text-white text-xs sm:text-sm truncate">${runner.name}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 truncate">"${runner.nickname}"</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-span-3 sm:col-span-2">
+                  <span class="bib-number font-bold text-xs sm:text-sm dark:text-white">${runner.bib_number}</span>
+                </div>
+                <div class="col-span-3 sm:col-span-2 text-center">
+                  <p class="font-bold text-sm sm:text-lg dark:text-white">${formatNumber(runner.total_distance || 0, 1)}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">km</p>
+                </div>
+                <div class="hidden sm:block col-span-2 text-center">
+                  <p class="font-bold text-lg dark:text-white">${runner.total_runs || 0}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">runs</p>
+                </div>
+                <div class="hidden sm:block col-span-2">
+                  <div class="flex items-center justify-center gap-2">
+                    <button 
+                      data-bib="${runner.bib_number}"
+                      class="edit-runner-btn p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                      title="Edit Runner"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button 
+                      data-bib="${runner.bib_number}"
+                      class="delete-runner-btn p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                      title="Delete Runner"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Mobile Actions -->
+              <div class="sm:hidden mt-3 pt-3 border-t border-gray-100 dark:border-zinc-700">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Runs: ${runner.total_runs || 0}</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button 
+                      data-bib="${runner.bib_number}"
+                      class="edit-runner-btn px-3 py-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-xs font-bold"
+                    >
+                      <i class="fas fa-edit mr-1"></i> Edit
+                    </button>
+                    <button 
+                      data-bib="${runner.bib_number}"
+                      class="delete-runner-btn px-3 py-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-xs font-bold"
+                    >
+                      <i class="fas fa-trash mr-1"></i> Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Add event listeners for buttons
+        document.querySelectorAll('.edit-runner-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const bibNumber = btn.dataset.bib;
+            editRunner(bibNumber);
+          });
+        });
+
+        document.querySelectorAll('.delete-runner-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const bibNumber = btn.dataset.bib;
+            deleteRunner(bibNumber);
+          });
+        });
+
+      } catch (error) {
+        console.error('Error loading runners:', error);
+        runnersList.innerHTML = `
+          <div class="p-4 sm:p-8 text-center">
+            <p class="text-red-500">Error loading runners. Please try again.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Edit runner
+    async function editRunner(bibNumber) {
+      try {
+        const snapshot = await db.ref(`runners/${bibNumber}`).once('value');
+        const runner = snapshot.val();
+        
+        if (!runner) {
+          alert('Runner not found');
+          return;
+        }
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+        modal.innerHTML = `
+          <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-zinc-700">
+            <div class="p-4 sm:p-6">
+              <div class="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 class="text-xl font-black dark:text-white">Edit Runner: ${runner.bib_number}</h2>
+                <button id="closeModal" class="p-2 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-full text-gray-400">
+                  <i class="fas fa-times text-lg"></i>
+                </button>
+              </div>
+              
+              <form id="editRunnerForm" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Full Name</label>
+                    <input 
+                      type="text" 
+                      id="editName"
+                      value="${runner.name}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Nickname</label>
+                    <input 
+                      type="text" 
+                      id="editNickname"
+                      value="${runner.nickname}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Contact Number</label>
+                    <input 
+                      type="tel" 
+                      id="editContact"
+                      value="${runner.contact}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Password</label>
+                    <input 
+                      type="password" 
+                      id="editPassword"
+                      value="${runner.password}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Total Runs</label>
+                    <input 
+                      type="number" 
+                      id="editTotalRuns"
+                      value="${runner.total_runs || 0}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Total Distance (km)</label>
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      id="editTotalDistance"
+                      value="${runner.total_distance || 0}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Avg Pace (min/km)</label>
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      id="editAvgPace"
+                      value="${runner.avg_pace || 0}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Status</label>
+                    <select 
+                      id="editStatus"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                    >
+                      <option value="active" ${runner.status === 'active' ? 'selected' : ''}>Active</option>
+                      <option value="inactive" ${runner.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+                      <option value="suspended" ${runner.status === 'suspended' ? 'selected' : ''}>Suspended</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                  <button 
+                    type="submit"
+                    class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all"
+                  >
+                    Update Runner
+                  </button>
+                  <button 
+                    type="button"
+                    id="cancelEdit"
+                    class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Close modal
+        modal.querySelector('#closeModal').addEventListener('click', () => {
+          document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('#cancelEdit').addEventListener('click', () => {
+          document.body.removeChild(modal);
+        });
+        
+        // Form submission
+        modal.querySelector('#editRunnerForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          try {
+            const updates = {
+              name: document.getElementById('editName').value,
+              nickname: document.getElementById('editNickname').value,
+              contact: document.getElementById('editContact').value,
+              password: document.getElementById('editPassword').value,
+              total_runs: parseInt(document.getElementById('editTotalRuns').value),
+              total_distance: parseFloat(document.getElementById('editTotalDistance').value),
+              avg_pace: parseFloat(document.getElementById('editAvgPace').value),
+              status: document.getElementById('editStatus').value,
+              last_updated: new Date().toISOString(),
+              updated_by: 'admin'
+            };
+            
+            await db.ref(`runners/${bibNumber}`).update(updates);
+            
+            alert('Runner updated successfully!');
+            document.body.removeChild(modal);
+            loadRunnersList();
+            
+          } catch (error) {
+            alert('Error updating runner: ' + error.message);
+          }
+        });
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            document.body.removeChild(modal);
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error editing runner:', error);
+        alert('Error loading runner details');
+      }
+    }
+
+    // Delete runner
+    async function deleteRunner(bibNumber) {
+      if (!confirm(`Are you sure you want to delete runner ${bibNumber}? This action cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        // Delete runner from database
+        await db.ref(`runners/${bibNumber}`).remove();
+        
+        // Delete runner's activities
+        const activitiesSnapshot = await db.ref('running_logs').orderByChild('bib_number').equalTo(bibNumber).once('value');
+        const updates = {};
+        activitiesSnapshot.forEach(childSnapshot => {
+          updates[`running_logs/${childSnapshot.key}`] = null;
+        });
+        
+        if (Object.keys(updates).length > 0) {
+          await db.ref().update(updates);
+        }
+        
+        alert(`Runner ${bibNumber} deleted successfully`);
+        
+        // Refresh runners list
+        loadRunnersList();
+        
+      } catch (error) {
+        console.error('Error deleting runner:', error);
+        alert('Error deleting runner');
+      }
+    }
+
+    // Manage Activities Component
+    async function renderManageActivities(container) {
+      container.innerHTML = `
+        <div class="animate-fadeIn">
+          <div class="flex justify-between items-center mb-4 sm:mb-6">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black tracking-tight dark:text-white">Manage Activities</h2>
+              <p class="text-gray-500 dark:text-gray-400 text-sm">View and manage all running activities</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                id="refreshActivities"
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2"
+              >
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+              </button>
+            </div>
+          </div>
+          
+          <!-- Filters -->
+          <div class="bg-white dark:bg-zinc-800 p-4 rounded-2xl mb-4 shadow-sm border border-gray-100 dark:border-zinc-700">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">Status Filter</label>
+                <select id="statusFilter" class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white">
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">Date From</label>
+                <input type="date" id="dateFrom" class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">Date To</label>
+                <input type="date" id="dateTo" class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">Bib Number</label>
+                <input type="text" id="bibFilter" placeholder="BIB-XXXX" class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white">
+              </div>
+            </div>
+            <button id="applyActivityFilter" class="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all">
+              Apply Filters
+            </button>
+          </div>
+          
+          <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-200 dark:border-zinc-700 overflow-hidden">
+            <div id="activitiesList" class="divide-y divide-gray-100 dark:divide-zinc-700">
+              <div class="p-4 text-center">
+                <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-red-600 border-t-transparent"></div>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading activities...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Load activities
+      loadActivitiesList();
+
+      // Add event listeners
+      document.getElementById('refreshActivities').addEventListener('click', loadActivitiesList);
+      document.getElementById('applyActivityFilter').addEventListener('click', loadActivitiesList);
+    }
+
+    // Load activities list for admin
+    async function loadActivitiesList() {
+      const activitiesList = document.getElementById('activitiesList');
+      if (!activitiesList) return;
+
+      try {
+        const snapshot = await db.ref('running_logs').once('value');
+        let activities = [];
+        
+        snapshot.forEach(childSnapshot => {
+          const activity = childSnapshot.val();
+          activity.id = childSnapshot.key;
+          activities.push(activity);
+        });
+
+        // Apply filters
+        const statusFilter = document.getElementById('statusFilter').value;
+        const dateFrom = document.getElementById('dateFrom').value;
+        const dateTo = document.getElementById('dateTo').value;
+        const bibFilter = document.getElementById('bibFilter').value;
+
+        if (statusFilter !== 'all') {
+          activities = activities.filter(activity => activity.status === statusFilter);
+        }
+
+        if (dateFrom) {
+          const fromDate = new Date(dateFrom);
+          activities = activities.filter(activity => new Date(activity.date) >= fromDate);
+        }
+
+        if (dateTo) {
+          const toDate = new Date(dateTo);
+          toDate.setHours(23, 59, 59, 999);
+          activities = activities.filter(activity => new Date(activity.date) <= toDate);
+        }
+
+        if (bibFilter) {
+          activities = activities.filter(activity => activity.bib_number.includes(bibFilter));
+        }
+
+        // Sort by date (newest first)
+        activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        if (activities.length === 0) {
+          activitiesList.innerHTML = `
+            <div class="p-6 sm:p-8 text-center">
+              <p class="text-gray-500 dark:text-gray-400">No activities found</p>
+            </div>
+          `;
+          return;
+        }
+
+        activitiesList.innerHTML = activities.map(activity => {
+          const activityDate = new Date(activity.date);
+          const formattedDate = activityDate.toLocaleDateString('en-GB', { 
+            day: 'numeric', 
+            month: 'short', 
+            year: 'numeric' 
+          });
+          const formattedTime = activityDate.toLocaleTimeString('en-GB', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+          
+          return `
+            <div class="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white">
+                      <i class="fas fa-running"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-bold dark:text-white">${activity.nickname || activity.runner_name} • ${activity.distance} km</h3>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">${activity.bib_number} • ${formattedDate} at ${formattedTime}</p>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2 mt-3">
+                    <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+                      <p class="font-bold dark:text-white">${activity.duration}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Minutes</p>
+                    </div>
+                    <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+                      <p class="font-bold dark:text-white">${activity.pace}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Pace</p>
+                    </div>
+                    <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+                      <p class="font-bold dark:text-white">${activity.likes || 0}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Likes</p>
+                    </div>
+                  </div>
+                  ${activity.notes ? `
+                    <div class="mt-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                      <p class="text-sm dark:text-white italic">"${activity.notes}"</p>
+                    </div>
+                  ` : ''}
+                </div>
+                <div class="flex flex-col items-end gap-2">
+                  <span class="px-3 py-1 rounded-full text-xs font-bold ${
+                    activity.status === 'approved' ? 'status-approved' : 
+                    activity.status === 'pending' ? 'status-pending' : 
+                    'status-rejected'
+                  }">
+                    ${activity.status || 'pending'}
+                  </span>
+                  <div class="flex items-center gap-2">
+                    ${activity.status === 'pending' ? `
+                      <button 
+                        data-id="${activity.id}"
+                        data-action="approve"
+                        class="approve-activity-btn px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition-all"
+                      >
+                        Approve
+                      </button>
+                      <button 
+                        data-id="${activity.id}"
+                        data-action="reject"
+                        class="reject-activity-btn px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all"
+                      >
+                        Reject
+                      </button>
+                    ` : ''}
+                    <button 
+                      data-id="${activity.id}"
+                      class="edit-activity-btn px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      data-id="${activity.id}"
+                      class="delete-activity-btn px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-xs font-bold rounded-lg transition-all"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Add event listeners for buttons
+        document.querySelectorAll('.approve-activity-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const activityId = btn.dataset.id;
+            await updateActivityStatus(activityId, 'approved');
+            loadActivitiesList();
+          });
+        });
+
+        document.querySelectorAll('.reject-activity-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const activityId = btn.dataset.id;
+            await updateActivityStatus(activityId, 'rejected');
+            loadActivitiesList();
+          });
+        });
+
+        document.querySelectorAll('.edit-activity-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const activityId = btn.dataset.id;
+            await editActivity(activityId);
+          });
+        });
+
+        document.querySelectorAll('.delete-activity-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const activityId = btn.dataset.id;
+            if (confirm('Are you sure you want to delete this activity?')) {
+              await deleteActivity(activityId);
+              loadActivitiesList();
+            }
+          });
+        });
+
+      } catch (error) {
+        console.error('Error loading activities:', error);
+        activitiesList.innerHTML = `
+          <div class="p-4 sm:p-8 text-center">
+            <p class="text-red-500">Error loading activities. Please try again.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Edit activity
+    async function editActivity(activityId) {
+      try {
+        const snapshot = await db.ref(`running_logs/${activityId}`).once('value');
+        const activity = snapshot.val();
+        
+        if (!activity) {
+          alert('Activity not found');
+          return;
+        }
+
+        // Parse duration into hours, minutes, seconds
+        const totalSeconds = activity.duration * 60; // Convert minutes to seconds
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.className = 'fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+        modal.innerHTML = `
+          <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-zinc-700">
+            <div class="p-4 sm:p-6">
+              <div class="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 class="text-xl font-black dark:text-white">Edit Activity</h2>
+                <button id="closeModal" class="p-2 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-full text-gray-400">
+                  <i class="fas fa-times text-lg"></i>
+                </button>
+              </div>
+              
+              <form id="editActivityForm" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Date</label>
+                    <input 
+                      type="date" 
+                      id="editActivityDate"
+                      value="${activity.date.split('T')[0]}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Activity Type</label>
+                    <select 
+                      id="editActivityType"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                    >
+                      <option value="run" ${activity.activity_type === 'run' ? 'selected' : ''}>Run</option>
+                      <option value="walk" ${activity.activity_type === 'walk' ? 'selected' : ''}>Walk</option>
+                      <option value="jog" ${activity.activity_type === 'jog' ? 'selected' : ''}>Jog</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Distance (km)</label>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      id="editDistance"
+                      value="${activity.distance}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Pace (min/km)</label>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      id="editPace"
+                      value="${activity.pace}"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Duration</label>
+                    <div class="time-input-group">
+                      <div class="time-input">
+                        <label class="text-xs text-gray-500">Hours</label>
+                        <input 
+                          type="number" 
+                          id="editHours"
+                          value="${hours}"
+                          min="0"
+                          class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                        />
+                      </div>
+                      <div class="time-input">
+                        <label class="text-xs text-gray-500">Minutes</label>
+                        <input 
+                          type="number" 
+                          id="editMinutes"
+                          value="${minutes}"
+                          min="0"
+                          max="59"
+                          class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                        />
+                      </div>
+                      <div class="time-input">
+                        <label class="text-xs text-gray-500">Seconds</label>
+                        <input 
+                          type="number" 
+                          id="editSeconds"
+                          value="${seconds}"
+                          min="0"
+                          max="59"
+                          class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Status</label>
+                    <select 
+                      id="editActivityStatus"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                    >
+                      <option value="pending" ${activity.status === 'pending' ? 'selected' : ''}>Pending</option>
+                      <option value="approved" ${activity.status === 'approved' ? 'selected' : ''}>Approved</option>
+                      <option value="rejected" ${activity.status === 'rejected' ? 'selected' : ''}>Rejected</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Notes</label>
+                  <textarea 
+                    id="editNotes"
+                    rows="3"
+                    class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-red-600 dark:text-white"
+                  >${activity.notes || ''}</textarea>
+                </div>
+                
+                <div class="flex gap-3 mt-6">
+                  <button 
+                    type="submit"
+                    class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all"
+                  >
+                    Update Activity
+                  </button>
+                  <button 
+                    type="button"
+                    id="cancelEditActivity"
+                    class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Close modal
+        modal.querySelector('#closeModal').addEventListener('click', () => {
+          document.body.removeChild(modal);
+        });
+        
+        modal.querySelector('#cancelEditActivity').addEventListener('click', () => {
+          document.body.removeChild(modal);
+        });
+        
+        // Form submission
+        modal.querySelector('#editActivityForm').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          try {
+            // Calculate total minutes from hours, minutes, seconds
+            const hours = parseInt(document.getElementById('editHours').value) || 0;
+            const minutes = parseInt(document.getElementById('editMinutes').value) || 0;
+            const seconds = parseInt(document.getElementById('editSeconds').value) || 0;
+            const totalMinutes = hours * 60 + minutes + seconds / 60;
+            
+            const updates = {
+              date: document.getElementById('editActivityDate').value,
+              activity_type: document.getElementById('editActivityType').value,
+              distance: parseFloat(document.getElementById('editDistance').value),
+              pace: parseFloat(document.getElementById('editPace').value),
+              duration: totalMinutes.toFixed(2),
+              notes: document.getElementById('editNotes').value,
+              status: document.getElementById('editActivityStatus').value,
+              last_updated: new Date().toISOString(),
+              updated_by: 'admin'
+            };
+            
+            await db.ref(`running_logs/${activityId}`).update(updates);
+            
+            // If status changed to approved, update runner stats
+            if (updates.status === 'approved' && activity.status !== 'approved') {
+              const runnerRef = db.ref(`runners/${activity.bib_number}`);
+              const runnerSnapshot = await runnerRef.once('value');
+              const runner = runnerSnapshot.val();
+              
+              if (runner) {
+                const newTotalRuns = (runner.total_runs || 0) + 1;
+                const newTotalDistance = (parseFloat(runner.total_distance) || 0) + parseFloat(updates.distance);
+                const newAvgPace = ((parseFloat(runner.avg_pace) || 0) * (newTotalRuns - 1) + parseFloat(updates.pace)) / newTotalRuns;
+                
+                await runnerRef.update({
+                  total_runs: newTotalRuns,
+                  total_distance: newTotalDistance,
+                  avg_pace: newAvgPace.toFixed(2)
+                });
+              }
+            }
+            
+            alert('Activity updated successfully!');
+            document.body.removeChild(modal);
+            loadActivitiesList();
+            
+          } catch (error) {
+            alert('Error updating activity: ' + error.message);
+          }
+        });
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            document.body.removeChild(modal);
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error editing activity:', error);
+        alert('Error loading activity details');
+      }
+    }
+
+    // Update activity status
+    async function updateActivityStatus(activityId, status) {
+      try {
+        await db.ref(`running_logs/${activityId}`).update({
+          status: status,
+          reviewed_date: new Date().toISOString(),
+          reviewed_by: 'admin'
+        });
+        
+        // If approved, update runner's stats
+        if (status === 'approved') {
+          const snapshot = await db.ref(`running_logs/${activityId}`).once('value');
+          const activity = snapshot.val();
+          
+          if (activity && activity.bib_number) {
+            const runnerRef = db.ref(`runners/${activity.bib_number}`);
+            const runnerSnapshot = await runnerRef.once('value');
+            const runner = runnerSnapshot.val();
+            
+            if (runner) {
+              const distance = parseFloat(activity.distance) || 0;
+              const pace = parseFloat(activity.pace) || 0;
+              const newTotalRuns = (runner.total_runs || 0) + 1;
+              const newTotalDistance = (parseFloat(runner.total_distance) || 0) + distance;
+              const newAvgPace = ((parseFloat(runner.avg_pace) || 0) * (newTotalRuns - 1) + pace) / newTotalRuns;
+              
+              await runnerRef.update({
+                total_runs: newTotalRuns,
+                total_distance: newTotalDistance,
+                avg_pace: newAvgPace.toFixed(2)
+              });
+            }
+          }
+        }
+        
+        alert(`Activity ${status} successfully`);
+        
+      } catch (error) {
+        console.error('Error updating activity status:', error);
+        alert('Error updating activity status');
+      }
+    }
+
+    // Delete activity
+    async function deleteActivity(activityId) {
+      try {
+        await db.ref(`running_logs/${activityId}`).remove();
+        alert('Activity deleted successfully');
+      } catch (error) {
+        console.error('Error deleting activity:', error);
+        alert('Error deleting activity');
+      }
+    }
+
+    // Pending Approvals Component
+    async function renderPendingApprovals(container) {
+      container.innerHTML = `
+        <div class="animate-fadeIn">
+          <div class="flex justify-between items-center mb-4 sm:mb-6">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black tracking-tight dark:text-white">Pending Approvals</h2>
+              <p class="text-gray-500 dark:text-gray-400 text-sm">Review and approve pending running activities</p>
+            </div>
+            <button 
+              id="refreshPending"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2"
+            >
+              <i class="fas fa-sync-alt"></i>
+              Refresh
+            </button>
+          </div>
+          
+          <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-200 dark:border-zinc-700 overflow-hidden">
+            <div id="pendingList" class="divide-y divide-gray-100 dark:divide-zinc-700">
+              <div class="p-4 text-center">
+                <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-red-600 border-t-transparent"></div>
+                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading pending activities...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Load pending activities
+      loadPendingActivities();
+
+      // Refresh button
+      document.getElementById('refreshPending').addEventListener('click', loadPendingActivities);
+    }
+
+    // Load pending activities
+    async function loadPendingActivities() {
+      const pendingList = document.getElementById('pendingList');
+      if (!pendingList) return;
+
+      try {
+        const snapshot = await db.ref('running_logs').orderByChild('status').equalTo('pending').once('value');
+        const activities = [];
+        
+        snapshot.forEach(childSnapshot => {
+          const activity = childSnapshot.val();
+          activity.id = childSnapshot.key;
+          activities.push(activity);
+        });
+
+        // Sort by date (newest first)
+        activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        if (activities.length === 0) {
+          pendingList.innerHTML = `
+            <div class="p-6 sm:p-8 text-center">
+              <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <i class="fas fa-check text-2xl sm:text-3xl text-green-600 dark:text-green-400"></i>
+              </div>
+              <h4 class="font-bold text-lg mb-2 dark:text-white">All Caught Up!</h4>
+              <p class="text-gray-500 dark:text-gray-400 mb-6 text-sm sm:text-base">No pending activities to review.</p>
+            </div>
+          `;
+          return;
+        }
+
+        pendingList.innerHTML = activities.map(activity => {
+          const activityDate = new Date(activity.date);
+          const formattedDate = activityDate.toLocaleDateString('en-GB', { 
+            day: 'numeric', 
+            month: 'short', 
+            year: 'numeric' 
+          });
+          const formattedTime = activityDate.toLocaleTimeString('en-GB', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+          const submissionDate = new Date(activity.submission_date);
+          const timeAgo = getTimeAgo(submissionDate);
+          
+          return `
+            <div class="p-4 sm:p-6 hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white">
+                      ${activity.nickname ? activity.nickname.substring(0, 2).toUpperCase() : 'RU'}
+                    </div>
+                    <div>
+                      <h3 class="font-bold dark:text-white">${activity.nickname || activity.runner_name}</h3>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">${activity.bib_number} • Submitted ${timeAgo}</p>
+                    </div>
+                  </div>
+                  
+                  <div class="grid grid-cols-3 gap-2 mt-3">
+                    <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+                      <p class="font-bold dark:text-white">${activity.distance} km</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Distance</p>
+                    </div>
+                    <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+                      <p class="font-bold dark:text-white">${activity.duration} min</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Duration</p>
+                    </div>
+                    <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+                      <p class="font-bold dark:text-white">${activity.pace}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Pace</p>
+                    </div>
+                  </div>
+                  
+                  <div class="mt-3 grid grid-cols-2 gap-2">
+                    <div class="p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Activity Date</p>
+                      <p class="font-bold dark:text-white">${formattedDate} at ${formattedTime}</p>
+                    </div>
+                    <div class="p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Activity Type</p>
+                      <p class="font-bold dark:text-white">${activity.activity_type || 'Run'}</p>
+                    </div>
+                  </div>
+                  
+                  ${activity.notes ? `
+                    <div class="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                      <p class="text-sm font-bold dark:text-white mb-1">Runner's Notes:</p>
+                      <p class="text-sm dark:text-white italic">"${activity.notes}"</p>
+                    </div>
+                  ` : ''}
+                </div>
+                
+                <div class="flex flex-col items-end gap-3">
+                  <span class="px-3 py-1 rounded-full text-xs font-bold status-pending">
+                    Pending Review
+                  </span>
+                  <div class="flex flex-col sm:flex-row gap-2">
+                    <button 
+                      data-id="${activity.id}"
+                      data-action="approve"
+                      class="approve-pending-btn px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <i class="fas fa-check"></i>
+                      Approve
+                    </button>
+                    <button 
+                      data-id="${activity.id}"
+                      data-action="reject"
+                      class="reject-pending-btn px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <i class="fas fa-times"></i>
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        // Add event listeners for buttons
+        document.querySelectorAll('.approve-pending-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const activityId = btn.dataset.id;
+            await updateActivityStatus(activityId, 'approved');
+            loadPendingActivities();
+          });
+        });
+
+        document.querySelectorAll('.reject-pending-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const activityId = btn.dataset.id;
+            await updateActivityStatus(activityId, 'rejected');
+            loadPendingActivities();
+          });
+        });
+
+      } catch (error) {
+        console.error('Error loading pending activities:', error);
+        pendingList.innerHTML = `
+          <div class="p-4 sm:p-8 text-center">
+            <p class="text-red-500">Error loading pending activities. Please try again.</p>
+          </div>
+        `;
+      }
+    }
+
+    // Get time ago string
+    function getTimeAgo(date) {
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.round(diffMs / 60000);
+      const diffHours = Math.round(diffMs / 3600000);
+      const diffDays = Math.round(diffMs / 86400000);
+      
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+      if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+      return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    }
+
+    // Admin Reports Component
+    async function renderAdminReports(container) {
+      // Load report data
+      let totalRunners = 0;
+      let totalActivities = 0;
+      let totalDistance = 0;
+      let pendingCount = 0;
+      let approvedCount = 0;
+      let runnersData = [];
+      let activitiesByDay = {};
+
+      try {
+        // Get runners data
+        const runnersSnapshot = await db.ref('runners').once('value');
+        totalRunners = runnersSnapshot.numChildren();
+        runnersSnapshot.forEach(childSnapshot => {
+          const runner = childSnapshot.val();
+          runnersData.push(runner);
+        });
+
+        // Get activities data
+        const activitiesSnapshot = await db.ref('running_logs').once('value');
+        activitiesSnapshot.forEach(childSnapshot => {
+          const activity = childSnapshot.val();
+          totalActivities++;
+          
+          if (activity.status === 'pending') pendingCount++;
+          if (activity.status === 'approved') approvedCount++;
+          
+          if (activity.distance && activity.status === 'approved') {
+            totalDistance += parseFloat(activity.distance) || 0;
+          }
+          
+          // Group by date
+          if (activity.date) {
+            const date = activity.date.split('T')[0];
+            if (!activitiesByDay[date]) {
+              activitiesByDay[date] = 0;
+            }
+            activitiesByDay[date]++;
+          }
+        });
+        
+      } catch (error) {
+        console.error('Error loading report data:', error);
+      }
+
+      // Sort runners by distance
+      runnersData.sort((a, b) => (parseFloat(b.total_distance) || 0) - (parseFloat(a.total_distance) || 0));
+      const topRunners = runnersData.slice(0, 5);
+
+      container.innerHTML = `
+        <div class="animate-fadeIn">
+          <div class="flex justify-between items-center mb-4 sm:mb-6">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black tracking-tight dark:text-white">Reports & Analytics</h2>
+              <p class="text-gray-500 dark:text-gray-400 text-sm">South Police Run Performance Insights</p>
+            </div>
+            <button 
+              id="exportReports"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-all flex items-center gap-2"
+            >
+              <i class="fas fa-download"></i>
+              Export Report
+            </button>
+          </div>
+          
+          <!-- Summary Stats -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div class="bg-white dark:bg-zinc-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400">Total Runners</p>
+                  <p class="text-2xl font-black mt-1 dark:text-white">${totalRunners}</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <i class="fas fa-users text-blue-600 dark:text-blue-400"></i>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-zinc-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400">Total Activities</p>
+                  <p class="text-2xl font-black mt-1 dark:text-white">${totalActivities}</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <i class="fas fa-running text-green-600 dark:text-green-400"></i>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-zinc-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400">Total Distance</p>
+                  <p class="text-2xl font-black mt-1 dark:text-white">${formatNumber(totalDistance, 1)} km</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                  <i class="fas fa-route text-orange-600 dark:text-orange-400"></i>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-zinc-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-zinc-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs font-semibold text-gray-500 dark:text-gray-400">Pending Reviews</p>
+                  <p class="text-2xl font-black mt-1 dark:text-white">${pendingCount}</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
+                  <i class="fas fa-clock text-yellow-600 dark:text-yellow-400"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Top Performers -->
+            <div class="bg-white dark:bg-zinc-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-700">
+              <h3 class="font-bold dark:text-white mb-4">Top 5 Performers</h3>
+              <div class="space-y-3">
+                ${topRunners.length > 0 ? topRunners.map((runner, index) => {
+                  return `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-xl">
+                      <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full ${
+                          index === 0 ? 'crown-gold' : 
+                          index === 1 ? 'crown-silver' : 
+                          index === 2 ? 'crown-bronze' : 
+                          'bg-orange-600/20'
+                        } flex items-center justify-center text-xs font-bold">
+                          ${index + 1}
+                        </div>
+                        <div>
+                          <p class="text-sm font-bold dark:text-white">${runner.nickname}</p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400">${runner.bib_number}</p>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <p class="text-sm font-bold dark:text-white">${formatNumber(runner.total_distance || 0, 1)} km</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">${runner.total_runs || 0} runs</p>
+                      </div>
+                    </div>
+                  `;
+                }).join('') : `
+                  <p class="text-gray-500 dark:text-gray-400 text-center py-4">No runner data available</p>
+                `}
+              </div>
+            </div>
+            
+            <!-- Activity Status -->
+            <div class="bg-white dark:bg-zinc-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-700">
+              <h3 class="font-bold dark:text-white mb-4">Activity Status</h3>
+              <div class="space-y-4">
+                <div>
+                  <div class="flex justify-between text-sm mb-1">
+                    <span class="text-gray-600 dark:text-gray-300">Approved</span>
+                    <span class="font-bold dark:text-white">${approvedCount}</span>
+                  </div>
+                  <div class="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
+                    <div class="bg-green-600 h-2 rounded-full" style="width: ${totalActivities > 0 ? (approvedCount / totalActivities * 100) : 0}%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-sm mb-1">
+                    <span class="text-gray-600 dark:text-gray-300">Pending</span>
+                    <span class="font-bold dark:text-white">${pendingCount}</span>
+                  </div>
+                  <div class="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
+                    <div class="bg-yellow-600 h-2 rounded-full" style="width: ${totalActivities > 0 ? (pendingCount / totalActivities * 100) : 0}%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-sm mb-1">
+                    <span class="text-gray-600 dark:text-gray-300">Rejected</span>
+                    <span class="font-bold dark:text-white">${totalActivities - approvedCount - pendingCount}</span>
+                  </div>
+                  <div class="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-2">
+                    <div class="bg-red-600 h-2 rounded-full" style="width: ${totalActivities > 0 ? ((totalActivities - approvedCount - pendingCount) / totalActivities * 100) : 0}%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Recent Activity Chart -->
+          <div class="bg-white dark:bg-zinc-800 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-700 mt-6">
+            <h3 class="font-bold dark:text-white mb-4">Recent Activity (Last 7 Days)</h3>
+            <div class="h-64 flex items-end justify-between gap-1 sm:gap-2">
+              ${(() => {
+                // Get last 7 days
+                const dates = [];
+                const today = new Date();
+                for (let i = 6; i >= 0; i--) {
+                  const date = new Date(today);
+                  date.setDate(date.getDate() - i);
+                  dates.push(date.toISOString().split('T')[0]);
+                }
+                
+                // Get counts for each date
+                const counts = dates.map(date => activitiesByDay[date] || 0);
+                const maxCount = Math.max(...counts, 1);
+                
+                return dates.map((date, index) => {
+                  const count = counts[index];
+                  const height = (count / maxCount) * 100;
+                  const day = new Date(date).toLocaleDateString('en-GB', { weekday: 'short' });
+                  
+                  return `
+                    <div class="flex-1 flex flex-col items-center">
+                      <div class="w-full bg-gray-200 dark:bg-zinc-700 rounded-t-lg overflow-hidden" style="height: ${height}%">
+                        <div class="w-full bg-gradient-to-t from-red-600 to-red-500 h-full"></div>
+                      </div>
+                      <div class="text-center mt-2">
+                        <p class="text-xs font-bold dark:text-white">${count}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">${day}</p>
+                      </div>
+                    </div>
+                  `;
+                }).join('');
+              })()}
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Export reports button
+      document.getElementById('exportReports').addEventListener('click', () => {
+        exportReports();
+      });
+    }
+
+    // Export reports
+    function exportReports() {
+      // Create CSV content
+      let csvContent = "South Police Run - Admin Report\n\n";
+      csvContent += "Generated: " + new Date().toLocaleString() + "\n\n";
+      csvContent += "Metric,Value\n";
+      csvContent += "Total Runners," + totalRegisteredRunners + "\n";
+      csvContent += "Total Activities," + "N/A" + "\n";
+      csvContent += "Total Distance (km)," + "N/A" + "\n";
+      csvContent += "Pending Reviews," + "N/A" + "\n\n";
+      csvContent += "Report exported from South Police Run Admin Dashboard";
+      
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `south-police-run-report-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      alert('Report exported successfully!');
+    }
+
+    // Activity Feed Component (for runners)
+    async function renderActivityFeed(container) {
+      container.innerHTML = `
+        <div class="animate-fadeIn">
+          <div class="flex justify-between items-center mb-4 sm:mb-6">
+            <h2 class="text-xl sm:text-2xl font-black tracking-tight dark:text-white">Activity Feed</h2>
+            <div class="flex items-center gap-2">
+              <!-- Date Filter for Feed -->
+              <div class="calendar-container">
+                <div class="calendar-input flex items-center justify-between calendar-bg">
+                  <span id="feedDateDisplay" class="text-white">${formatDate(selectedDate)}</span>
+                  <i class="fas fa-calendar-alt text-orange-400"></i>
+                </div>
+                <div id="feedCalendarPopup" class="calendar-popup hidden">
+                  <div class="calendar-header">
+                    <button id="feedPrevMonth" class="p-1 hover:bg-gray-100 rounded">
+                      <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <h3 id="feedCurrentMonth" class="font-bold"></h3>
+                    <button id="feedNextMonth" class="p-1 hover:bg-gray-100 rounded">
+                      <i class="fas fa-chevron-right"></i>
+                    </button>
+                  </div>
+                  <div id="feedCalendarDays" class="calendar-grid"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="activityFeedList" class="space-y-4">
+            <div class="text-center py-8">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-orange-600 border-t-transparent"></div>
+              <p class="mt-3 text-gray-500 dark:text-gray-400">Loading activities...</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Initialize calendar for feed
+      initializeFeedCalendar();
+      
+      // Load activity feed
+      loadActivityFeed();
+    }
+
+    // Initialize feed calendar
+    function initializeFeedCalendar() {
       const calendarInput = document.querySelector('.calendar-input');
-      const calendarPopup = document.getElementById('calendarPopup');
-      const currentMonth = document.getElementById('currentMonth');
-      const calendarDays = document.getElementById('calendarDays');
-      const prevMonthBtn = document.getElementById('prevMonth');
-      const nextMonthBtn = document.getElementById('nextMonth');
-      const selectedDateDisplay = document.getElementById('selectedDateDisplay');
+      const calendarPopup = document.getElementById('feedCalendarPopup');
+      const currentMonth = document.getElementById('feedCurrentMonth');
+      const calendarDays = document.getElementById('feedCalendarDays');
+      const prevMonthBtn = document.getElementById('feedPrevMonth');
+      const nextMonthBtn = document.getElementById('feedNextMonth');
+      const selectedDateDisplay = document.getElementById('feedDateDisplay');
       
       let currentDate = new Date(selectedDate);
       let currentMonthYear = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       
-      function updateCalendar() {
+      async function updateCalendar() {
         // Update month display
         currentMonth.textContent = currentMonthYear.toLocaleDateString('en-GB', { 
           month: 'long', 
@@ -1584,11 +3829,24 @@ const firebaseConfig = {
           calendarDays.appendChild(emptyElement);
         }
         
+        // Get activities for the month to mark days with activities
+        const activities = await getActivitiesForMonth(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1);
+        const activityDays = new Set();
+        activities.forEach(activity => {
+          const activityDate = new Date(activity.date);
+          activityDays.add(activityDate.getDate());
+        });
+        
         // Add days of month
         for (let i = 1; i <= lastDay.getDate(); i++) {
           const dayDate = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), i);
           const dayElement = document.createElement('div');
           dayElement.className = 'calendar-day';
+          
+          // Check if this day has activities
+          if (activityDays.has(i)) {
+            dayElement.classList.add('has-activity');
+          }
           
           // Check if this is the selected date
           const isSelected = selectedDate && 
@@ -1605,9 +3863,31 @@ const firebaseConfig = {
             selectedDate = dayDate;
             selectedDateDisplay.textContent = formatDate(selectedDate);
             calendarPopup.classList.add('hidden');
-            loadFilteredActivities();
+            loadActivityFeed();
           });
           calendarDays.appendChild(dayElement);
+        }
+      }
+      
+      // Get activities for a specific month
+      async function getActivitiesForMonth(year, month) {
+        try {
+          const snapshot = await db.ref('running_logs').once('value');
+          const activities = [];
+          
+          snapshot.forEach(childSnapshot => {
+            const activity = childSnapshot.val();
+            const activityDate = new Date(activity.date);
+            
+            if (activityDate.getFullYear() === year && activityDate.getMonth() + 1 === month) {
+              activities.push(activity);
+            }
+          });
+          
+          return activities;
+        } catch (error) {
+          console.error('Error getting activities for month:', error);
+          return [];
         }
       }
       
@@ -1639,10 +3919,10 @@ const firebaseConfig = {
       updateCalendar();
     }
 
-    // Load filtered activities
-    async function loadFilteredActivities() {
-      const filteredActivitiesList = document.getElementById('filteredActivitiesList');
-      if (!filteredActivitiesList) return;
+    // Load activity feed for runners
+    async function loadActivityFeed() {
+      const activityFeedList = document.getElementById('activityFeedList');
+      if (!activityFeedList) return;
 
       try {
         const snapshot = await db.ref('running_logs').once('value');
@@ -1654,127 +3934,10 @@ const firebaseConfig = {
           activities.push(activity);
         });
 
-        // Filter by date
+        // Filter by selected date
         activities = activities.filter(activity => {
           const activityDate = new Date(activity.date);
           return activityDate.toDateString() === selectedDate.toDateString();
-        });
-
-        // Filter by runner
-        if (filterRunner !== 'all') {
-          activities = activities.filter(activity => activity.bib_number === filterRunner);
-        }
-
-        // Sort by date (newest first)
-        activities.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        if (activities.length === 0) {
-          filteredActivitiesList.innerHTML = `
-            <div class="text-center py-6">
-              <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-zinc-700 flex items-center justify-center">
-                <i class="fas fa-search text-gray-400 text-xl"></i>
-              </div>
-              <p class="text-gray-500 dark:text-gray-400 font-medium">No activities found</p>
-              <p class="text-sm text-gray-400 mt-1">Try changing your filters</p>
-            </div>
-          `;
-          return;
-        }
-
-        filteredActivitiesList.innerHTML = activities.map(activity => {
-          const activityDate = new Date(activity.date);
-          const formattedTime = activityDate.toLocaleTimeString('en-GB', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          });
-          
-          return `
-            <div class="p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-xl">
-              <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center gap-2">
-                  <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white text-xs font-bold">
-                    ${activity.nickname ? activity.nickname.substring(0, 2).toUpperCase() : 'RU'}
-                  </div>
-                  <div>
-                    <p class="text-sm font-bold dark:text-white">${activity.nickname || activity.runner_name}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">${activity.bib_number}</p>
-                  </div>
-                </div>
-                <span class="text-xs text-gray-500 dark:text-gray-400">${formattedTime}</span>
-              </div>
-              
-              <div class="grid grid-cols-3 gap-2 mt-3">
-                <div class="text-center p-2 bg-white dark:bg-zinc-800 rounded-lg">
-                  <p class="font-bold text-lg dark:text-white">${activity.distance}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Distance (km)</p>
-                </div>
-                <div class="text-center p-2 bg-white dark:bg-zinc-800 rounded-lg">
-                  <p class="font-bold text-lg dark:text-white">${activity.duration}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Duration (min)</p>
-                </div>
-                <div class="text-center p-2 bg-white dark:bg-zinc-800 rounded-lg">
-                  <p class="font-bold text-lg dark:text-white">${activity.pace}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Pace (min/km)</p>
-                </div>
-              </div>
-              
-              ${activity.notes ? `
-                <div class="mt-3 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                  <p class="text-xs dark:text-white italic">"${activity.notes}"</p>
-                </div>
-              ` : ''}
-            </div>
-          `;
-        }).join('');
-      } catch (error) {
-        console.error('Error loading filtered activities:', error);
-        filteredActivitiesList.innerHTML = `
-          <div class="text-center py-6">
-            <p class="text-red-500">Error loading activities. Please try again.</p>
-          </div>
-        `;
-      }
-    }
-
-    // Activity Feed Component
-    async function renderActivityFeed(container) {
-      container.innerHTML = `
-        <div class="animate-fadeIn">
-          <div class="flex justify-between items-center mb-4 sm:mb-6">
-            <h2 class="text-xl sm:text-2xl font-black tracking-tight dark:text-white">Activity Feed</h2>
-            <div class="flex items-center gap-2">
-              <button class="px-3 py-1.5 text-sm bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full font-bold">
-                Community
-              </button>
-            </div>
-          </div>
-          
-          <div id="activityFeedList" class="space-y-4">
-            <div class="text-center py-8">
-              <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-orange-600 border-t-transparent"></div>
-              <p class="mt-3 text-gray-500 dark:text-gray-400">Loading activities...</p>
-            </div>
-          </div>
-        </div>
-      `;
-
-      // Load activity feed
-      loadActivityFeed();
-    }
-
-    // Load activity feed
-    async function loadActivityFeed() {
-      const activityFeedList = document.getElementById('activityFeedList');
-      if (!activityFeedList) return;
-
-      try {
-        const snapshot = await db.ref('running_logs').orderByChild('date').limitToLast(20).once('value');
-        const activities = [];
-        
-        snapshot.forEach(childSnapshot => {
-          const activity = childSnapshot.val();
-          activity.id = childSnapshot.key;
-          activities.push(activity);
         });
 
         // Sort by date (newest first)
@@ -1786,8 +3949,8 @@ const firebaseConfig = {
               <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
                 <i class="fas fa-newspaper text-2xl text-orange-600 dark:text-orange-400"></i>
               </div>
-              <h4 class="font-bold text-lg mb-2 dark:text-white">No activities yet</h4>
-              <p class="text-gray-500 dark:text-gray-400 mb-6">Be the first to log an activity!</p>
+              <h4 class="font-bold text-lg mb-2 dark:text-white">No activities for ${formatDate(selectedDate)}</h4>
+              <p class="text-gray-500 dark:text-gray-400 mb-6">Select another date or log an activity!</p>
             </div>
           `;
           return;
@@ -1871,7 +4034,7 @@ const firebaseConfig = {
                   </button>
                 </div>
                 <div class="flex items-center gap-1">
-                  <div class="w-2 h-2 rounded-full ${activity.status === 'approved' ? 'bg-green-500' : 'bg-yellow-500'}"></div>
+                  <div class="w-2 h-2 rounded-full ${activity.status === 'approved' ? 'bg-green-500' : activity.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'}"></div>
                   <span class="text-xs text-gray-500 dark:text-gray-400">${activity.status || 'pending'}</span>
                 </div>
               </div>
@@ -1937,7 +4100,7 @@ const firebaseConfig = {
       }
     }
 
-    // Ranking Component
+    // Ranking Component for runners
     async function renderRanking(container) {
       container.innerHTML = `
         <div class="animate-fadeIn">
@@ -1956,9 +4119,8 @@ const firebaseConfig = {
                 <div class="col-span-2 sm:col-span-1 text-center">Rank</div>
                 <div class="col-span-4 sm:col-span-3">Runner</div>
                 <div class="col-span-3 sm:col-span-2">Bib Number</div>
-                <div class="col-span-3 sm:col-span-2 text-center">Distance</div>
-                <div class="hidden sm:block col-span-2 text-center">Runs</div>
-                <div class="hidden sm:block col-span-2 text-center">Pace</div>
+                <div class="col-span-3 sm:col-span-3 text-center">Distance</div>
+                <div class="hidden sm:block col-span-3 text-center">Medal Progress</div>
               </div>
             </div>
             <div id="rankingList" class="divide-y divide-gray-100 dark:divide-zinc-700">
@@ -1982,7 +4144,7 @@ const firebaseConfig = {
         });
 
         // Sort by total distance
-        runners.sort((a, b) => (b.total_distance || 0) - (a.total_distance || 0));
+        runners.sort((a, b) => (parseFloat(b.total_distance) || 0) - (parseFloat(a.total_distance) || 0));
         
         const rankingList = document.getElementById('rankingList');
         rankingList.innerHTML = '';
@@ -1990,6 +4152,25 @@ const firebaseConfig = {
         runners.forEach((runner, index) => {
           const isCurrentUser = runner.bib_number === currentUser.bib_number;
           const rank = index + 1;
+          const totalDistance = parseFloat(runner.total_distance) || 0;
+          
+          // Calculate next medal progress
+          const medalGoals = [50, 100, 250, 500, 1000];
+          let nextMedal = 50;
+          let progress = 0;
+          
+          for (const goal of medalGoals) {
+            if (totalDistance < goal) {
+              nextMedal = goal;
+              progress = (totalDistance / goal) * 100;
+              break;
+            }
+          }
+          
+          if (totalDistance >= 1000) {
+            nextMedal = 1000;
+            progress = 100;
+          }
           
           let rankClass = 'text-gray-700 dark:text-gray-300';
           let rankIcon = '';
@@ -2028,17 +4209,37 @@ const firebaseConfig = {
               <div class="col-span-3 sm:col-span-2">
                 <span class="bib-number font-bold text-xs sm:text-sm dark:text-white">${runner.bib_number}</span>
               </div>
-              <div class="col-span-3 sm:col-span-2 text-center">
-                <p class="font-bold text-sm sm:text-lg dark:text-white">${(runner.total_distance || 0).toFixed(1)}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">km</p>
+              <div class="col-span-3 sm:col-span-3 text-center">
+                <p class="font-bold text-sm sm:text-lg dark:text-white">${formatNumber(runner.total_distance || 0, 1)} km</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">${runner.total_runs || 0} runs</p>
               </div>
-              <div class="hidden sm:block col-span-2 text-center">
-                <p class="font-bold text-lg dark:text-white">${runner.total_runs || 0}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">runs</p>
+              <div class="hidden sm:block col-span-3">
+                <div class="flex items-center gap-2">
+                  <div class="flex-1">
+                    <div class="flex justify-between text-xs mb-1">
+                      <span class="text-gray-600 dark:text-gray-400">${formatNumber(totalDistance, 1)}/${nextMedal} km</span>
+                      <span class="font-bold text-orange-600 dark:text-orange-400">${Math.min(100, Math.round(progress))}%</span>
+                    </div>
+                    <div class="ranking-progress-bar">
+                      <div class="ranking-progress-fill" style="width: ${Math.min(100, progress)}%"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="hidden sm:block col-span-2 text-center">
-                <p class="font-bold text-lg dark:text-white">${(runner.avg_pace || 0).toFixed(1)}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">min/km</p>
+            </div>
+            
+            <!-- Mobile Medal Progress -->
+            <div class="sm:hidden mt-3 pt-3 border-t border-gray-100 dark:border-zinc-700">
+              <div class="flex items-center gap-2">
+                <div class="flex-1">
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="text-gray-600 dark:text-gray-400">Next Medal: ${nextMedal} km</span>
+                    <span class="font-bold text-orange-600 dark:text-orange-400">${Math.min(100, Math.round(progress))}%</span>
+                  </div>
+                  <div class="ranking-progress-bar">
+                    <div class="ranking-progress-fill" style="width: ${Math.min(100, progress)}%"></div>
+                  </div>
+                </div>
               </div>
             </div>
           `;
@@ -2054,169 +4255,7 @@ const firebaseConfig = {
       }
     }
 
-    // Leaderboard Component
-    async function renderLeaderboard(container) {
-      container.innerHTML = `
-        <div class="animate-fadeIn">
-          <div class="flex justify-between items-center mb-4 sm:mb-6">
-            <h2 class="text-xl sm:text-2xl font-black tracking-tight dark:text-white">100km Leaderboard</h2>
-            <div class="flex items-center gap-2">
-              <button class="px-3 py-1.5 text-sm bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full font-bold">
-                Top Performers
-              </button>
-            </div>
-          </div>
-          
-          <div class="bg-gradient-to-br from-orange-500 to-amber-400 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-lg sm:text-xl font-black text-white">🏆 Top 3 Champions 🏆</h3>
-                <p class="text-white/80 text-xs sm:text-sm">These runners have achieved the highest distances</p>
-              </div>
-              <div class="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <i class="fas fa-trophy text-xl sm:text-3xl text-white"></i>
-              </div>
-            </div>
-          </div>
-          
-          <div id="top3Container" class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            <div class="p-4 text-center">
-              <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-orange-600 border-t-transparent"></div>
-              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading top performers...</p>
-            </div>
-          </div>
-          
-          <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl shadow-sm border border-gray-200 dark:border-zinc-700 overflow-hidden">
-            <div class="p-3 sm:p-4 border-b border-gray-200 dark:border-zinc-700">
-              <div class="grid grid-cols-12 gap-2 sm:gap-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">
-                <div class="col-span-2 sm:col-span-1 text-center">Rank</div>
-                <div class="col-span-5 sm:col-span-4">Runner</div>
-                <div class="col-span-3 sm:col-span-3">Distance</div>
-                <div class="col-span-2 sm:col-span-4">Progress</div>
-              </div>
-            </div>
-            <div id="leaderboardList" class="divide-y divide-gray-100 dark:divide-zinc-700">
-              <div class="p-4 text-center">
-                <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-orange-600 border-t-transparent"></div>
-                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading leaderboard...</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      // Load leaderboard
-      try {
-        const snapshot = await db.ref('runners').once('value');
-        const runners = [];
-        
-        snapshot.forEach(childSnapshot => {
-          const runner = childSnapshot.val();
-          runners.push(runner);
-        });
-
-        // Sort by total distance
-        runners.sort((a, b) => (b.total_distance || 0) - (a.total_distance || 0));
-        
-        // Show top 3
-        const top3Container = document.getElementById('top3Container');
-        top3Container.innerHTML = '';
-        
-        const top3 = runners.slice(0, 3);
-        const positions = ['1st', '2nd', '3rd'];
-        const colors = ['gold', 'silver', 'bronze'];
-        
-        top3.forEach((runner, index) => {
-          const position = positions[index];
-          const color = colors[index];
-          
-          top3Container.innerHTML += `
-            <div class="animate-fadeIn" style="animation-delay: ${index * 0.1}s">
-              <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg border border-gray-200 dark:border-zinc-700 text-center">
-                <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-full medal-${color} flex items-center justify-center mx-auto mb-3 sm:mb-4 text-xl sm:text-2xl">
-                  ${index === 0 ? '👑' : index === 1 ? '🥈' : '🥉'}
-                </div>
-                <div class="text-xl sm:text-3xl font-black mb-2 dark:text-white">${position}</div>
-                <div class="bib-number text-base sm:text-xl font-bold text-orange-600 dark:text-orange-400 mb-2">${runner.bib_number}</div>
-                <p class="font-bold dark:text-white text-sm sm:text-base mb-1">${runner.name}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-3 sm:mb-4">"${runner.nickname}"</p>
-                <div class="text-center">
-                  <p class="text-xl sm:text-2xl font-black dark:text-white">${(runner.total_distance || 0).toFixed(1)}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Total Distance (km)</p>
-                </div>
-              </div>
-            </div>
-          `;
-        });
-        
-        // Show full list
-        const leaderboardList = document.getElementById('leaderboardList');
-        leaderboardList.innerHTML = '';
-        
-        runners.forEach((runner, index) => {
-          const rank = index + 1;
-          const isCurrentUser = runner.bib_number === currentUser.bib_number;
-          const progress = Math.min(100, Math.round((runner.total_distance || 0) / 100 * 100));
-          
-          const row = document.createElement('div');
-          row.className = `p-3 sm:p-4 ${isCurrentUser ? 'bg-orange-50 dark:bg-orange-900/20' : ''} hover:bg-gray-50 dark:hover:bg-zinc-700/50 transition-colors`;
-          row.innerHTML = `
-            <div class="grid grid-cols-12 gap-2 sm:gap-4 items-center">
-              <div class="col-span-2 sm:col-span-1 text-center">
-                <div class="inline-flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full ${
-                  rank === 1 ? 'crown-gold' : 
-                  rank === 2 ? 'crown-silver' : 
-                  rank === 3 ? 'crown-bronze' : 
-                  'bg-gray-100 dark:bg-zinc-700 text-gray-700 dark:text-gray-300'
-                } font-bold text-xs sm:text-sm">
-                  ${rank}
-                </div>
-              </div>
-              <div class="col-span-5 sm:col-span-4">
-                <div class="flex items-center gap-2 sm:gap-3">
-                  <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr ${isCurrentUser ? 'from-orange-600 to-amber-500' : 'from-blue-600 to-cyan-500'} flex items-center justify-center text-white text-xs sm:text-sm font-bold" style="background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('${RUNNER_BACKGROUND}') center/cover no-repeat;">
-                    ${runner.nickname ? runner.nickname.substring(0, 2).toUpperCase() : 'RU'}
-                  </div>
-                  <div class="truncate">
-                    <p class="font-bold dark:text-white text-xs sm:text-sm truncate">${runner.name}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 truncate">${runner.bib_number}</p>
-                  </div>
-                </div>
-              </div>
-              <div class="col-span-3 sm:col-span-3">
-                <div class="flex items-center gap-2">
-                  <div class="flex-1">
-                    <p class="font-bold text-sm sm:text-lg dark:text-white">${(runner.total_distance || 0).toFixed(1)} km</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">${runner.total_runs || 0} runs</p>
-                  </div>
-                </div>
-              </div>
-              <div class="col-span-2 sm:col-span-4">
-                <div class="space-y-1">
-                  <div class="flex justify-between text-xs">
-                    <span class="text-gray-500 dark:text-gray-400 hidden sm:inline">Progress</span>
-                    <span class="font-bold dark:text-white">${progress}%</span>
-                  </div>
-                  <div class="w-full bg-gray-200 dark:bg-zinc-700 rounded-full h-1.5 sm:h-2">
-                    <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-1.5 sm:h-2 rounded-full" style="width: ${progress}%"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          `;
-          leaderboardList.appendChild(row);
-        });
-      } catch (error) {
-        console.error('Error loading leaderboard:', error);
-        document.getElementById('leaderboardList').innerHTML = `
-          <div class="p-4 sm:p-8 text-center">
-            <p class="text-red-500">Error loading leaderboard. Please try again.</p>
-          </div>
-        `;
-      }
-    }
-
-    // My Activities Component
+    // My Activities Component for runners
     async function renderMyActivities(container) {
       container.innerHTML = `
         <div class="animate-fadeIn">
@@ -2300,16 +4339,16 @@ const firebaseConfig = {
                   </div>
                   <div class="grid grid-cols-3 gap-2 mt-3">
                     <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+                      <p class="font-bold dark:text-white">${activity.distance}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Distance</p>
+                    </div>
+                    <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
                       <p class="font-bold dark:text-white">${activity.duration}</p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">Minutes</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">Duration</p>
                     </div>
                     <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
                       <p class="font-bold dark:text-white">${activity.pace}</p>
                       <p class="text-xs text-gray-500 dark:text-gray-400">Pace</p>
-                    </div>
-                    <div class="text-center p-2 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
-                      <p class="font-bold dark:text-white">${activity.likes || 0}</p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400">Likes</p>
                     </div>
                   </div>
                   ${activity.notes ? `
@@ -2319,7 +4358,11 @@ const firebaseConfig = {
                   ` : ''}
                 </div>
                 <div class="flex flex-col items-end gap-2">
-                  <span class="px-3 py-1 rounded-full text-xs font-bold ${activity.status === 'approved' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : activity.status === 'pending' ? 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}">
+                  <span class="px-3 py-1 rounded-full text-xs font-bold ${
+                    activity.status === 'approved' ? 'status-approved' : 
+                    activity.status === 'pending' ? 'status-pending' : 
+                    'status-rejected'
+                  }">
                     ${activity.status || 'pending'}
                   </span>
                 </div>
@@ -2338,7 +4381,7 @@ const firebaseConfig = {
       }
     }
 
-    // Log Activity Modal
+    // Log Activity Modal (for runners)
     function renderLogActivityModal() {
       const modal = document.createElement('div');
       modal.className = 'fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
@@ -2385,10 +4428,10 @@ const firebaseConfig = {
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Distance (km)</label>
                 <input 
                   type="number" 
-                  step="0.1"
-                  min="0.1"
+                  step="0.01"
+                  min="0.01"
                   id="distance"
-                  placeholder="e.g., 5.0"
+                  placeholder="e.g., 5.25"
                   class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-orange-600 dark:text-white"
                   required
                 />
@@ -2396,27 +4439,53 @@ const firebaseConfig = {
               
               <!-- Duration -->
               <div>
-                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Duration (minutes)</label>
-                <input 
-                  type="number" 
-                  min="1"
-                  id="duration"
-                  placeholder="e.g., 30"
-                  class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-orange-600 dark:text-white"
-                  required
-                />
+                <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Duration</label>
+                <div class="time-input-group">
+                  <div class="time-input">
+                    <label class="text-xs text-gray-500 dark:text-gray-400">Hours</label>
+                    <input 
+                      type="number" 
+                      id="hours"
+                      min="0"
+                      value="0"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-orange-600 dark:text-white"
+                    />
+                  </div>
+                  <div class="time-input">
+                    <label class="text-xs text-gray-500 dark:text-gray-400">Minutes</label>
+                    <input 
+                      type="number" 
+                      id="minutes"
+                      min="0"
+                      max="59"
+                      value="30"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-orange-600 dark:text-white"
+                    />
+                  </div>
+                  <div class="time-input">
+                    <label class="text-xs text-gray-500 dark:text-gray-400">Seconds</label>
+                    <input 
+                      type="number" 
+                      id="seconds"
+                      min="0"
+                      max="59"
+                      value="0"
+                      class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-orange-600 dark:text-white"
+                    />
+                  </div>
+                </div>
               </div>
               
-              <!-- Pace (Auto-calculated) -->
+              <!-- Pace -->
               <div>
                 <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Average Pace (min/km)</label>
                 <input 
                   type="number" 
-                  step="0.1"
+                  step="0.01"
                   id="pace"
-                  placeholder="Auto-calculated"
-                  readonly
-                  class="w-full bg-gray-100 dark:bg-zinc-600 border-none rounded-xl p-3 text-sm font-bold dark:text-white"
+                  placeholder="e.g., 6.25"
+                  class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-orange-600 dark:text-white"
+                  required
                 />
               </div>
               
@@ -2450,9 +4519,6 @@ const firebaseConfig = {
       // Add event listeners
       const closeBtn = modal.querySelector('#closeModal');
       const activityTypeBtns = modal.querySelectorAll('.activity-type-btn');
-      const distanceInput = modal.querySelector('#distance');
-      const durationInput = modal.querySelector('#duration');
-      const paceInput = modal.querySelector('#pace');
       const form = modal.querySelector('#logActivityForm');
       
       let selectedActivityType = 'run';
@@ -2470,22 +4536,6 @@ const firebaseConfig = {
           btn.classList.add('active', 'border-orange-600', 'text-orange-600');
         });
       });
-      
-      // Auto-calculate pace
-      function calculatePace() {
-        const distance = parseFloat(distanceInput.value);
-        const duration = parseFloat(durationInput.value);
-        
-        if (distance > 0 && duration > 0) {
-          const pace = duration / distance;
-          paceInput.value = pace.toFixed(2);
-        } else {
-          paceInput.value = '';
-        }
-      }
-      
-      distanceInput.addEventListener('input', calculatePace);
-      durationInput.addEventListener('input', calculatePace);
       
       // Close modal
       closeBtn.addEventListener('click', () => {
@@ -2505,15 +4555,20 @@ const firebaseConfig = {
         
         try {
           // Validate inputs
-          const distance = parseFloat(distanceInput.value);
-          const duration = parseFloat(durationInput.value);
-          const pace = parseFloat(paceInput.value);
+          const distance = parseFloat(modal.querySelector('#distance').value);
+          const hours = parseInt(modal.querySelector('#hours').value) || 0;
+          const minutes = parseInt(modal.querySelector('#minutes').value) || 0;
+          const seconds = parseInt(modal.querySelector('#seconds').value) || 0;
+          const pace = parseFloat(modal.querySelector('#pace').value);
           const date = modal.querySelector('#activityDate').value;
           const notes = modal.querySelector('#notes').value;
           
-          if (!distance || !duration || !pace || !date) {
-            throw new Error('Please fill all required fields');
+          if (!distance || isNaN(distance) || !pace || isNaN(pace) || !date) {
+            throw new Error('Please fill all required fields with valid numbers');
           }
+          
+          // Calculate total minutes
+          const totalMinutes = hours * 60 + minutes + seconds / 60;
           
           // Save activity to database
           const activityData = {
@@ -2521,9 +4576,9 @@ const firebaseConfig = {
             runner_name: currentUser.name,
             nickname: currentUser.nickname,
             date: date,
-            distance: distance,
-            duration: duration,
-            pace: pace,
+            distance: distance.toFixed(2),
+            duration: totalMinutes.toFixed(2),
+            pace: pace.toFixed(2),
             activity_type: selectedActivityType,
             notes: notes || null,
             status: 'pending',
@@ -2534,38 +4589,15 @@ const firebaseConfig = {
           
           const activityRef = await db.ref('running_logs').push(activityData);
           
-          // Update user stats
-          const userRef = db.ref(`runners/${currentUser.bib_number}`);
-          const userSnapshot = await userRef.once('value');
-          const userData = userSnapshot.val();
-          
-          const newTotalRuns = (userData.total_runs || 0) + 1;
-          const newTotalDistance = (userData.total_distance || 0) + distance;
-          const newAvgPace = ((userData.avg_pace || 0) * (newTotalRuns - 1) + pace) / newTotalRuns;
-          
-          await userRef.update({
-            total_runs: newTotalRuns,
-            total_distance: newTotalDistance,
-            avg_pace: newAvgPace.toFixed(2),
-            last_activity_date: new Date().toISOString()
-          });
-          
-          // Update current user data
-          currentUser.total_runs = newTotalRuns;
-          currentUser.total_distance = newTotalDistance;
-          currentUser.avg_pace = newAvgPace.toFixed(2);
-          localStorage.setItem('currentUser', JSON.stringify(currentUser));
-          
-          // Success message
           alert('Activity logged successfully! It will be reviewed and approved soon.');
           
           // Close modal
           document.body.removeChild(modal);
           isLogActivityModalOpen = false;
           
-          // Refresh current tab and sidebar
+          // Refresh activities tab
+          activeTab = 'activities';
           renderContent();
-          loadSidebarActivities();
           
         } catch (error) {
           alert('Error: ' + error.message);
@@ -2583,6 +4615,279 @@ const firebaseConfig = {
       });
     }
 
+    // Format date for display
+    function formatDate(date) {
+      return date.toLocaleDateString('en-GB', { 
+        day: 'numeric', 
+        month: 'short', 
+        year: 'numeric' 
+      });
+    }
+
+    // Initialize calendar
+    async function initializeCalendar() {
+      const calendarInput = document.querySelector('.calendar-input');
+      const calendarPopup = document.getElementById('calendarPopup');
+      const currentMonth = document.getElementById('currentMonth');
+      const calendarDays = document.getElementById('calendarDays');
+      const prevMonthBtn = document.getElementById('prevMonth');
+      const nextMonthBtn = document.getElementById('nextMonth');
+      const selectedDateDisplay = document.getElementById('selectedDateDisplay');
+      
+      let currentDate = new Date(selectedDate);
+      let currentMonthYear = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      
+      async function updateCalendar() {
+        // Update month display
+        currentMonth.textContent = currentMonthYear.toLocaleDateString('en-GB', { 
+          month: 'long', 
+          year: 'numeric' 
+        });
+        
+        // Clear previous days
+        calendarDays.innerHTML = '';
+        
+        // Get first day of month
+        const firstDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), 1);
+        const lastDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1, 0);
+        
+        // Add day headers
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        days.forEach(day => {
+          const dayElement = document.createElement('div');
+          dayElement.className = 'text-center text-xs font-bold text-gray-500';
+          dayElement.textContent = day;
+          calendarDays.appendChild(dayElement);
+        });
+        
+        // Add empty cells for days before first day of month
+        for (let i = 0; i < firstDay.getDay(); i++) {
+          const emptyElement = document.createElement('div');
+          emptyElement.className = 'calendar-day disabled';
+          calendarDays.appendChild(emptyElement);
+        }
+        
+        // Get activities for the month to mark days with activities
+        const activities = await getActivitiesForMonth(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1);
+        const activityDays = new Set();
+        activities.forEach(activity => {
+          const activityDate = new Date(activity.date);
+          activityDays.add(activityDate.getDate());
+        });
+        
+        // Add days of month
+        for (let i = 1; i <= lastDay.getDate(); i++) {
+          const dayDate = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), i);
+          const dayElement = document.createElement('div');
+          dayElement.className = 'calendar-day';
+          
+          // Check if this day has activities
+          if (activityDays.has(i)) {
+            dayElement.classList.add('has-activity');
+          }
+          
+          // Check if this is the selected date
+          const isSelected = selectedDate && 
+            dayDate.getDate() === selectedDate.getDate() &&
+            dayDate.getMonth() === selectedDate.getMonth() &&
+            dayDate.getFullYear() === selectedDate.getFullYear();
+          
+          if (isSelected) {
+            dayElement.classList.add('selected');
+          }
+          
+          dayElement.textContent = i;
+          dayElement.addEventListener('click', () => {
+            selectedDate = dayDate;
+            selectedDateDisplay.textContent = formatDate(selectedDate);
+            calendarPopup.classList.add('hidden');
+            loadFilteredActivities();
+          });
+          calendarDays.appendChild(dayElement);
+        }
+      }
+      
+      // Get activities for a specific month
+      async function getActivitiesForMonth(year, month) {
+        try {
+          const snapshot = await db.ref('running_logs').once('value');
+          const activities = [];
+          
+          snapshot.forEach(childSnapshot => {
+            const activity = childSnapshot.val();
+            const activityDate = new Date(activity.date);
+            
+            if (activityDate.getFullYear() === year && activityDate.getMonth() + 1 === month) {
+              activities.push(activity);
+            }
+          });
+          
+          return activities;
+        } catch (error) {
+          console.error('Error getting activities for month:', error);
+          return [];
+        }
+      }
+      
+      // Toggle calendar popup
+      calendarInput.addEventListener('click', () => {
+        calendarPopup.classList.toggle('hidden');
+      });
+      
+      // Previous month
+      prevMonthBtn.addEventListener('click', () => {
+        currentMonthYear.setMonth(currentMonthYear.getMonth() - 1);
+        updateCalendar();
+      });
+      
+      // Next month
+      nextMonthBtn.addEventListener('click', () => {
+        currentMonthYear.setMonth(currentMonthYear.getMonth() + 1);
+        updateCalendar();
+      });
+      
+      // Close calendar when clicking outside
+      document.addEventListener('click', (event) => {
+        if (!calendarInput.contains(event.target) && !calendarPopup.contains(event.target)) {
+          calendarPopup.classList.add('hidden');
+        }
+      });
+      
+      // Initialize calendar
+      updateCalendar();
+    }
+
+    // Load filtered activities for runners
+    async function loadFilteredActivities() {
+      const filteredActivitiesList = document.getElementById('filteredActivitiesList');
+      if (!filteredActivitiesList) return;
+
+      try {
+        const snapshot = await db.ref('running_logs').once('value');
+        let activities = [];
+        let runnerActivitiesData = {};
+        
+        snapshot.forEach(childSnapshot => {
+          const activity = childSnapshot.val();
+          activity.id = childSnapshot.key;
+          activities.push(activity);
+          
+          // Track runner activities for distance calculation
+          if (!runnerActivitiesData[activity.bib_number]) {
+            runnerActivitiesData[activity.bib_number] = {
+              count: 0,
+              totalDistance: 0
+            };
+          }
+          runnerActivitiesData[activity.bib_number].count++;
+          runnerActivitiesData[activity.bib_number].totalDistance += parseFloat(activity.distance) || 0;
+        });
+
+        // Filter by date
+        activities = activities.filter(activity => {
+          const activityDate = new Date(activity.date);
+          return activityDate.toDateString() === selectedDate.toDateString();
+        });
+
+        // Filter by runner
+        if (filterRunner !== 'all') {
+          activities = activities.filter(activity => activity.bib_number === filterRunner);
+        }
+
+        // Sort by date (newest first)
+        activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (activities.length === 0) {
+          filteredActivitiesList.innerHTML = `
+            <div class="text-center py-6">
+              <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-zinc-700 flex items-center justify-center">
+                <i class="fas fa-search text-gray-400 text-xl"></i>
+              </div>
+              <p class="text-gray-500 dark:text-gray-400 font-medium">No activities found for ${formatDate(selectedDate)}</p>
+              <p class="text-sm text-gray-400 mt-1">Try changing your filters or select another date</p>
+            </div>
+          `;
+          return;
+        }
+
+        // Show runner distance info if filtered by specific runner
+        let runnerInfoHTML = '';
+        if (filterRunner !== 'all' && runnerActivitiesData[filterRunner]) {
+          const runnerData = runnerActivitiesData[filterRunner];
+          runnerInfoHTML = `
+            <div class="mb-4 p-3 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-lg border border-orange-200 dark:border-orange-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-bold text-orange-700 dark:text-orange-300">Runner Summary</p>
+                  <p class="text-xs text-orange-600 dark:text-orange-400">Activities on ${formatDate(selectedDate)}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-lg font-black text-orange-700 dark:text-orange-300">${runnerData.count}</p>
+                  <p class="text-xs text-orange-600 dark:text-orange-400">activities</p>
+                </div>
+              </div>
+              <div class="mt-2 text-center">
+                <p class="text-sm font-bold text-gray-700 dark:text-gray-300">Total Distance: <span class="text-orange-600 dark:text-orange-400">${formatNumber(runnerData.totalDistance, 2)} km</span></p>
+              </div>
+            </div>
+          `;
+        }
+
+        filteredActivitiesList.innerHTML = runnerInfoHTML + activities.map(activity => {
+          const activityDate = new Date(activity.date);
+          const formattedTime = activityDate.toLocaleTimeString('en-GB', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+          
+          return `
+            <div class="p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-xl">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white text-xs font-bold">
+                    ${activity.nickname ? activity.nickname.substring(0, 2).toUpperCase() : 'RU'}
+                  </div>
+                  <div>
+                    <p class="text-sm font-bold dark:text-white">${activity.nickname || activity.runner_name}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">${activity.bib_number}</p>
+                  </div>
+                </div>
+                <span class="text-xs text-gray-500 dark:text-gray-400">${formattedTime}</span>
+              </div>
+              
+              <div class="grid grid-cols-3 gap-2 mt-3">
+                <div class="text-center p-2 bg-white dark:bg-zinc-800 rounded-lg">
+                  <p class="font-bold text-lg dark:text-white">${activity.distance}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Distance (km)</p>
+                </div>
+                <div class="text-center p-2 bg-white dark:bg-zinc-800 rounded-lg">
+                  <p class="font-bold text-lg dark:text-white">${activity.duration}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Duration (min)</p>
+                </div>
+                <div class="text-center p-2 bg-white dark:bg-zinc-800 rounded-lg">
+                  <p class="font-bold text-lg dark:text-white">${activity.pace}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">Pace (min/km)</p>
+                </div>
+              </div>
+              
+              ${activity.notes ? `
+                <div class="mt-3 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                  <p class="text-xs dark:text-white italic">"${activity.notes}"</p>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error loading filtered activities:', error);
+        filteredActivitiesList.innerHTML = `
+          <div class="text-center py-6">
+            <p class="text-red-500">Error loading activities. Please try again.</p>
+          </div>
+        `;
+      }
+    }
+
     // Utility Functions
     function toggleSidebar() {
       isSidebarOpen = !isSidebarOpen;
@@ -2593,6 +4898,7 @@ const firebaseConfig = {
       auth.signOut();
       localStorage.removeItem('currentUser');
       currentUser = null;
+      isAdmin = false;
       renderLogin();
     }
 
@@ -2601,25 +4907,32 @@ const firebaseConfig = {
       document.querySelectorAll('.sidebar-tab-btn').forEach(btn => {
         const tabId = btn.dataset.tab;
         if (tabId === activeTab) {
-          btn.classList.add('bg-orange-600', 'text-white', 'shadow-lg', 'shadow-orange-600/20');
-          btn.classList.remove('text-gray-400', 'hover:bg-zinc-800', 'hover:text-white');
+          if (isAdmin) {
+            btn.classList.add('bg-red-600', 'text-white', 'shadow-lg', 'shadow-red-600/20');
+            btn.classList.remove('text-gray-400', 'hover:bg-zinc-800', 'hover:text-white');
+          } else {
+            btn.classList.add('bg-orange-600', 'text-white', 'shadow-lg', 'shadow-orange-600/20');
+            btn.classList.remove('text-gray-400', 'hover:bg-zinc-800', 'hover:text-white');
+          }
         } else {
-          btn.classList.remove('bg-orange-600', 'text-white', 'shadow-lg', 'shadow-orange-600/20');
+          btn.classList.remove('bg-orange-600', 'text-white', 'shadow-lg', 'shadow-orange-600/20', 'bg-red-600', 'shadow-red-600/20');
           btn.classList.add('text-gray-400', 'hover:bg-zinc-800', 'hover:text-white');
         }
       });
 
-      // Update mobile tab buttons
-      document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
-        const tabId = btn.dataset.tab;
-        if (tabId === activeTab) {
-          btn.classList.add('text-orange-600');
-          btn.classList.remove('text-gray-500', 'dark:text-gray-400');
-        } else {
-          btn.classList.remove('text-orange-600');
-          btn.classList.add('text-gray-500', 'dark:text-gray-400');
-        }
-      });
+      // Update mobile tab buttons (only for runners)
+      if (!isAdmin) {
+        document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+          const tabId = btn.dataset.tab;
+          if (tabId === activeTab) {
+            btn.classList.add('text-orange-600');
+            btn.classList.remove('text-gray-500', 'dark:text-gray-400');
+          } else {
+            btn.classList.remove('text-orange-600');
+            btn.classList.add('text-gray-500', 'dark:text-gray-400');
+          }
+        });
+      }
 
       // Add sidebar logout listener
       const sidebarLogout = document.getElementById('sidebarLogout');
@@ -2649,7 +4962,5 @@ const firebaseConfig = {
     // Initialize the application
     initApp();
   </script>
-  
 </body>
-
 </html>
