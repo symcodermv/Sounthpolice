@@ -6013,5 +6013,733 @@
     // Initialize the application
     initApp();
   </script>
+  <script>
+    // Load filtered activities for runners - MODIFIED VERSION with total distance and activities
+async function loadFilteredActivities() {
+  const filteredActivitiesList = document.getElementById('filteredActivitiesList');
+  if (!filteredActivitiesList) return;
+
+  try {
+    const snapshot = await db.ref('running_logs').once('value');
+    let activities = [];
+    
+    snapshot.forEach(childSnapshot => {
+      const activity = childSnapshot.val();
+      activity.id = childSnapshot.key;
+      activities.push(activity);
+    });
+
+    // Filter by date
+    activities = activities.filter(activity => {
+      const activityDate = new Date(activity.date);
+      return activityDate.toDateString() === selectedDate.toDateString();
+    });
+
+    // MODIFIED: If no runner selected, show message
+    if (filterRunner === 'all' || !filterRunner || filterRunner === '') {
+      filteredActivitiesList.innerHTML = `
+        <div class="text-center py-10">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+            <i class="fas fa-user-friends text-2xl text-orange-600 dark:text-orange-400"></i>
+          </div>
+          <h4 class="font-bold text-lg mb-2 dark:text-white">Select a Runner</h4>
+          <p class="text-gray-500 dark:text-gray-400 mb-6">Please select a runner from the dropdown to view their activities</p>
+          <div class="flex items-center justify-center gap-2">
+            <div class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+            <p class="text-sm text-orange-600 font-bold">Choose a runner to see their activities</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Filter by runner
+    activities = activities.filter(activity => activity.bib_number === filterRunner);
+
+    // Sort by date (newest first)
+    activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Get ALL activities for this runner (not just filtered by date) for total stats
+    const allActivitiesSnapshot = await db.ref('running_logs').once('value');
+    let allRunnerActivities = [];
+    let totalDistanceAllTime = 0;
+    let totalActivitiesAllTime = 0;
+    
+    allActivitiesSnapshot.forEach(childSnapshot => {
+      const activity = childSnapshot.val();
+      if (activity.bib_number === filterRunner) {
+        allRunnerActivities.push(activity);
+        totalActivitiesAllTime++;
+        totalDistanceAllTime += parseFloat(activity.distance) || 0;
+      }
+    });
+
+    // Calculate statistics for today's activities
+    let totalDistanceToday = 0;
+    let totalDurationToday = 0;
+    let avgPaceToday = 0;
+    
+    activities.forEach(activity => {
+      totalDistanceToday += parseFloat(activity.distance) || 0;
+      totalDurationToday += parseFloat(activity.duration) || 0;
+    });
+    
+    if (activities.length > 0 && totalDistanceToday > 0) {
+      avgPaceToday = totalDurationToday / totalDistanceToday;
+    }
+
+    if (activities.length === 0) {
+      // Show runner stats even if no activities today
+      let runnerName = '';
+      let runnerNickname = '';
+      
+      // Try to get runner info from database
+      const runnerSnapshot = await db.ref(`runners/${filterRunner}`).once('value');
+      if (runnerSnapshot.exists()) {
+        const runner = runnerSnapshot.val();
+        runnerName = runner.name;
+        runnerNickname = runner.nickname;
+      }
+      
+      filteredActivitiesList.innerHTML = `
+        <div class="mb-6 p-4 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl text-white shadow-lg">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
+                <i class="fas fa-user text-xl"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-black">${runnerName || filterRunner}</h3>
+                <p class="text-blue-100">"${runnerNickname || 'Runner'}" • ${filterRunner}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            <div class="text-center p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+              <p class="text-xl font-black">${formatNumber(totalDistanceAllTime, 1)}</p>
+              <p class="text-xs">Total km (All Time)</p>
+            </div>
+            <div class="text-center p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+              <p class="text-xl font-black">${totalActivitiesAllTime}</p>
+              <p class="text-xs">Total Activities</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="text-center py-10">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+            <i class="fas fa-running text-2xl text-orange-600 dark:text-orange-400"></i>
+          </div>
+          <h4 class="font-bold text-lg mb-2 dark:text-white">No Activities Today</h4>
+          <p class="text-gray-500 dark:text-gray-400 mb-4">${runnerName || filterRunner} has no activities for ${formatDate(selectedDate)}</p>
+          <div class="p-3 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-lg border border-orange-200 dark:border-orange-700">
+            <p class="text-sm font-bold text-orange-700 dark:text-orange-300">Total all-time: ${formatNumber(totalDistanceAllTime, 1)} km in ${totalActivitiesAllTime} activities</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Get runner info for the header
+    let runnerInfoHTML = '';
+    let runnerName = activities[0].runner_name;
+    let runnerNickname = activities[0].nickname;
+    
+    runnerInfoHTML = `
+      <div class="mb-6 p-4 bg-gradient-to-r from-orange-600 to-amber-500 rounded-xl text-white shadow-lg">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white">
+              <i class="fas fa-user text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-black">${runnerName}</h3>
+              <p class="text-orange-100">"${runnerNickname}" • ${filterRunner}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg">
+              <p class="text-lg font-black">${activities.length}</p>
+              <p class="text-xs">Today's Activities</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Today's Stats -->
+        <div class="mb-4 p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+          <p class="text-xs font-bold mb-2 text-orange-200">TODAY'S SUMMARY - ${formatDate(selectedDate)}</p>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="text-center p-2">
+              <p class="text-xl font-black">${formatNumber(totalDistanceToday, 1)}</p>
+              <p class="text-xs">Total km</p>
+            </div>
+            <div class="text-center p-2">
+              <p class="text-xl font-black">${formatNumber(totalDurationToday, 0)}</p>
+              <p class="text-xs">Total min</p>
+            </div>
+            <div class="text-center p-2">
+              <p class="text-xl font-black">${formatNumber(avgPaceToday, 2)}</p>
+              <p class="text-xs">Avg Pace</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- All-Time Stats -->
+        <div class="p-3 bg-white/20 backdrop-blur-sm rounded-lg">
+          <p class="text-xs font-bold mb-2 text-orange-200">ALL-TIME STATS</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="text-center p-2">
+              <p class="text-xl font-black">${formatNumber(totalDistanceAllTime, 1)}</p>
+              <p class="text-xs">Total km</p>
+            </div>
+            <div class="text-center p-2">
+              <p class="text-xl font-black">${totalActivitiesAllTime}</p>
+              <p class="text-xs">Total Activities</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    filteredActivitiesList.innerHTML = runnerInfoHTML + activities.map(activity => {
+      const activityDate = new Date(activity.date);
+      const formattedTime = activityDate.toLocaleTimeString('en-GB', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      
+      return `
+        <div class="mb-4 p-4 bg-white dark:bg-zinc-800 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-700 hover:shadow-md transition-shadow">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white">
+                <i class="fas fa-running"></i>
+              </div>
+              <div>
+                <h4 class="font-bold dark:text-white">${activity.activity_type || 'Run'}</h4>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs px-2 py-1 rounded-full ${
+                    activity.status === 'approved' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
+                    activity.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' : 
+                    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                  }">
+                    ${activity.status || 'pending'}
+                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">${formattedTime}</span>
+                </div>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-2xl font-black text-orange-600 dark:text-orange-400">${activity.distance}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">kilometers</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-3 gap-3 mt-4">
+            <div class="text-center p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+              <p class="text-lg font-black dark:text-white">${activity.distance}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Distance (km)</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+              <p class="text-lg font-black dark:text-white">${activity.duration}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Duration (min)</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 dark:bg-zinc-700/50 rounded-lg">
+              <p class="text-lg font-black dark:text-white">${activity.pace}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Pace (min/km)</p>
+            </div>
+          </div>
+          
+          ${activity.notes ? `
+            <div class="mt-4 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+              <p class="text-sm font-bold text-orange-700 dark:text-orange-300 mb-1">Notes:</p>
+              <p class="text-sm dark:text-white italic">"${activity.notes}"</p>
+            </div>
+          ` : ''}
+          
+          <div class="mt-4 pt-3 border-t border-gray-100 dark:border-zinc-700 flex items-center justify-between">
+            <div class="flex items-center gap-1">
+              <i class="fas fa-heart text-red-500"></i>
+              <span class="text-sm text-gray-600 dark:text-gray-400">${activity.likes || 0} likes</span>
+            </div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              ${new Date(activity.submission_date).toLocaleDateString('en-GB', { 
+                day: 'numeric', 
+                month: 'short', 
+                year: 'numeric' 
+              })}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (error) {
+    console.error('Error loading filtered activities:', error);
+    filteredActivitiesList.innerHTML = `
+      <div class="text-center py-6">
+        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+          <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
+        </div>
+        <p class="text-red-500 font-medium">Error loading activities</p>
+        <p class="text-sm text-gray-400 mt-1">Please try again or check your connection</p>
+      </div>
+    `;
+  }
+}
+  </script>
+  
+  <script>
+    // Log Activity Modal (for runners) - Simplified Version (FEATURE 4)
+function renderLogActivityModal() {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+  modal.innerHTML = `
+    <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-zinc-700">
+      <div class="p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-4 sm:mb-6">
+          <h2 class="text-xl font-black dark:text-white">Log New Activity</h2>
+          <button id="closeModal" class="p-2 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded-full text-gray-400">
+            <i class="fas fa-times text-lg"></i>
+          </button>
+        </div>
+        
+        <form id="logActivityForm" class="space-y-4 sm:space-y-5 simple-log-form">
+          <!-- Activity Type -->
+          <div>
+            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Activity Type</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" data-type="run" class="activity-type-btn flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-400 transition-all">
+                <i class="fas fa-running"></i>
+                <span class="font-bold">Run</span>
+              </button>
+              <button type="button" data-type="walk" class="activity-type-btn flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-400 transition-all">
+                <i class="fas fa-walking"></i>
+                <span class="font-bold">Walk</span>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Date -->
+          <div>
+            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Date</label>
+            <input 
+              type="date" 
+              id="activityDate"
+              value="${new Date().toISOString().split('T')[0]}"
+              class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-orange-600 dark:text-white"
+              required
+            />
+          </div>
+          
+          <!-- Proof Image Upload -->
+          <div>
+            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Proof Image *</label>
+            <div class="image-preview-container" id="imagePreviewContainer">
+              <div class="image-preview-placeholder" id="imagePlaceholder">
+                <i class="fas fa-cloud-upload-alt text-3xl mb-2 text-gray-400"></i>
+                <p class="text-sm">Click to upload proof image</p>
+                <p class="text-xs text-gray-500">PNG, JPG, JPEG up to 5MB</p>
+              </div>
+              <img id="imagePreview" class="image-preview hidden" alt="Proof image preview">
+            </div>
+            <input type="file" id="proofImage" accept="image/*" class="hidden" required>
+          </div>
+          
+          <!-- FEATURE 4: Removed Distance, Duration, Pace fields for runners -->
+          
+          <!-- Notes -->
+          <div>
+            <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Notes (Optional)</label>
+            <textarea 
+              id="notes"
+              rows="3"
+              placeholder="How was your run? Any milestones achieved?"
+              class="w-full bg-gray-50 dark:bg-zinc-700 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-orange-600 dark:text-white"
+            ></textarea>
+          </div>
+          
+          <!-- Submit Button -->
+          <button 
+            type="submit"
+            id="submitActivityBtn"
+            class="w-full bg-orange-600 hover:bg-orange-700 text-white font-black py-3 sm:py-4 rounded-xl shadow-xl shadow-orange-600/20 transition-all flex items-center justify-center gap-2"
+          >
+            <i class="fas fa-plus"></i>
+            SUBMIT ACTIVITY
+          </button>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Add event listeners
+  const closeBtn = modal.querySelector('#closeModal');
+  const activityTypeBtns = modal.querySelectorAll('.activity-type-btn');
+  const form = modal.querySelector('#logActivityForm');
+  const imagePreviewContainer = modal.querySelector('#imagePreviewContainer');
+  const imagePreview = modal.querySelector('#imagePreview');
+  const imagePlaceholder = modal.querySelector('#imagePlaceholder');
+  const proofImageInput = modal.querySelector('#proofImage');
+  
+  let selectedActivityType = 'run';
+  let selectedImageFile = null;
+  
+  // Set initial activity type
+  activityTypeBtns[0].classList.add('active', 'border-orange-600', 'text-orange-600');
+  
+  // Activity type selection
+  activityTypeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedActivityType = btn.dataset.type;
+      activityTypeBtns.forEach(b => {
+        b.classList.remove('active', 'border-orange-600', 'text-orange-600');
+      });
+      btn.classList.add('active', 'border-orange-600', 'text-orange-600');
+    });
+  });
+  
+  // Image upload handling
+  imagePreviewContainer.addEventListener('click', () => {
+    proofImageInput.click();
+  });
+  
+  proofImageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      
+      selectedImageFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        imagePreview.src = e.target.result;
+        imagePreview.classList.remove('hidden');
+        imagePlaceholder.classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+  
+  // Close modal
+  closeBtn.addEventListener('click', () => {
+    document.body.removeChild(modal);
+    isLogActivityModalOpen = false;
+  });
+  
+  // Form submission
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const submitBtn = modal.querySelector('#submitActivityBtn');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div> Processing...';
+    
+    try {
+      // Validate inputs
+      const date = modal.querySelector('#activityDate').value;
+      const notes = modal.querySelector('#notes').value;
+      
+      if (!selectedImageFile) {
+        throw new Error('Please upload a proof image');
+      }
+      
+      if (!date) {
+        throw new Error('Please select a date');
+      }
+      
+      // Upload image
+      let imageUrl = null;
+      if (selectedImageFile) {
+        const storageRef = storage.ref();
+        const imageRef = storageRef.child(`activity_proofs/${Date.now()}_${selectedImageFile.name}`);
+        await imageRef.put(selectedImageFile);
+        imageUrl = await imageRef.getDownloadURL();
+      }
+      
+      // Save activity to database with pending status
+      // FEATURE 4: Distance, Duration, Pace will be added by admin
+      const activityData = {
+        bib_number: currentUser.bib_number,
+        runner_name: currentUser.name,
+        nickname: currentUser.nickname,
+        date: date,
+        distance: 0, // Will be updated by admin
+        duration: 0, // Will be updated by admin
+        pace: 0, // Will be updated by admin
+        activity_type: selectedActivityType,
+        notes: notes || null,
+        proof_image: imageUrl,
+        status: 'pending',
+        submission_date: new Date().toISOString(),
+        likes: 0,
+        liked_by: []
+      };
+      
+      await db.ref('running_logs').push(activityData);
+      
+      // REMOVED: alert('Activity submitted for approval! Admin will review your proof image and add the distance, duration, and pace.');
+      
+      // Close modal first
+      document.body.removeChild(modal);
+      isLogActivityModalOpen = false;
+      
+      // Show enhanced running shoes animation immediately
+      showEnhancedRunningShoesAnimation();
+      
+      // Refresh activities tab after animation
+      setTimeout(() => {
+        activeTab = 'activities';
+        renderContent();
+      }, 4000);
+      
+    } catch (error) {
+      alert('Error: ' + error.message);
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  });
+  
+  // Close modal when clicking outside
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+      isLogActivityModalOpen = false;
+    }
+  });
+}
+
+// Enhanced Running Shoes Animation with Black Screen
+function showEnhancedRunningShoesAnimation() {
+  const animationContainer = document.createElement('div');
+  animationContainer.className = 'fixed inset-0 z-[1000000] animate-fadeIn';
+  animationContainer.style.cssText = `
+    background: linear-gradient(135deg, #000000 0%, #1a1a2e 50%, #16213e 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    overflow: hidden;
+  `;
+  
+  animationContainer.innerHTML = `
+    <!-- Animated Background Elements -->
+    <div class="absolute inset-0 overflow-hidden">
+      <div class="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-orange-600/10 to-transparent rounded-full blur-3xl animate-pulse"></div>
+      <div class="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-amber-600/10 to-transparent rounded-full blur-3xl animate-pulse" style="animation-delay: 1s;"></div>
+    </div>
+    
+    <!-- Floating Shoes -->
+    <div class="running-shoe-fullscreen animate-running-shoes-fullscreen" style="top: 20%; left: 15%; transform: rotate(-15deg);">👟</div>
+    <div class="running-shoe-fullscreen animate-running-shoes-fullscreen" style="top: 30%; left: 70%; transform: rotate(10deg); animation-delay: 0.2s;">👟</div>
+    <div class="running-shoe-fullscreen animate-running-shoes-fullscreen" style="top: 60%; left: 20%; transform: rotate(5deg); animation-delay: 0.4s;">👟</div>
+    <div class="running-shoe-fullscreen animate-running-shoes-fullscreen" style="top: 70%; left: 65%; transform: rotate(-10deg); animation-delay: 0.6s;">👟</div>
+    <div class="running-shoe-fullscreen animate-running-shoes-fullscreen" style="top: 40%; left: 40%; transform: rotate(15deg); animation-delay: 0.8s;">👟</div>
+    
+    <!-- Central Content -->
+    <div class="relative z-10 text-center px-6">
+      <div class="mb-8">
+        <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center shadow-2xl shadow-orange-600/50 animate-bounce">
+          <i class="fas fa-check text-4xl text-white"></i>
+        </div>
+        
+        <h1 class="running-shoes-fullscreen-text mb-4">
+          ACTIVITY SUBMITTED!
+        </h1>
+        
+        <div class="space-y-4">
+          <p class="text-xl font-bold text-white/90 tracking-wider">
+            Proof image uploaded successfully
+          </p>
+          <div class="flex items-center justify-center gap-3">
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <p class="text-lg text-green-400 font-semibold">Waiting for admin approval</p>
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Progress Bar -->
+      <div class="w-64 mx-auto mt-8">
+        <div class="flex justify-between text-sm text-white/70 mb-2">
+          <span>Submitted</span>
+          <span>Under Review</span>
+        </div>
+        <div class="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-orange-600 via-amber-500 to-orange-600 rounded-full animate-loading"></div>
+        </div>
+        <p class="text-xs text-white/50 mt-2">Admin will add distance, duration & pace</p>
+      </div>
+      
+      <!-- Stats Preview -->
+      <div class="mt-10 grid grid-cols-3 gap-4 max-w-md mx-auto">
+        <div class="p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
+          <div class="text-2xl font-black text-orange-400">0.0</div>
+          <div class="text-xs text-white/70 mt-1">Distance (km)</div>
+        </div>
+        <div class="p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
+          <div class="text-2xl font-black text-amber-400">0.0</div>
+          <div class="text-xs text-white/70 mt-1">Duration (min)</div>
+        </div>
+        <div class="p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
+          <div class="text-2xl font-black text-yellow-400">0.0</div>
+          <div class="text-xs text-white/70 mt-1">Pace (min/km)</div>
+        </div>
+      </div>
+      
+      <!-- Countdown Timer -->
+      <div class="mt-8 text-white/60 text-sm">
+        Returning to dashboard in <span id="countdownTimer" class="font-bold text-white">3</span> seconds...
+      </div>
+    </div>
+    
+    <!-- Bottom Note -->
+    <div class="absolute bottom-8 left-0 right-0 text-center">
+      <p class="text-white/40 text-sm font-medium tracking-wider">Powered by Roadha Run • Developed by Ahmed Vaseem</p>
+    </div>
+  `;
+  
+  document.body.appendChild(animationContainer);
+  
+  // Add CSS for the loading animation
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes loading {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    
+    .animate-loading {
+      animation: loading 2s ease-in-out infinite;
+      width: 30%;
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // Countdown timer
+  let countdown = 3;
+  const countdownElement = document.getElementById('countdownTimer');
+  const timer = setInterval(() => {
+    countdown--;
+    if (countdownElement) {
+      countdownElement.textContent = countdown;
+    }
+    if (countdown <= 0) {
+      clearInterval(timer);
+    }
+  }, 2000);
+  
+  // Remove animation after 3 seconds
+  setTimeout(() => {
+    if (animationContainer.parentNode) {
+      document.body.removeChild(animationContainer);
+      if (style.parentNode) {
+        document.head.removeChild(style);
+      }
+    }
+  }, 3000);
+}
+  </script>
+  <style>
+    /* Enhanced Running Shoes Animation Styles */
+@keyframes runningShoesFullScreen {
+  0% { 
+    transform: scale(0.5) rotate(0deg);
+    opacity: 0;
+    filter: brightness(1);
+  }
+  10% { 
+    transform: scale(1.2) rotate(5deg);
+    opacity: 0.8;
+    filter: brightness(1.2);
+  }
+  20% { 
+    transform: scale(1.8) rotate(-5deg);
+    opacity: 1;
+    filter: brightness(1.5);
+  }
+  30% { 
+    transform: scale(2.5) rotate(8deg);
+    opacity: 1;
+    filter: brightness(1.8);
+  }
+  40% { 
+    transform: scale(3.2) rotate(-8deg);
+    opacity: 1;
+    filter: brightness(2);
+  }
+  50% { 
+    transform: scale(4) rotate(10deg);
+    opacity: 1;
+    filter: brightness(2.3);
+  }
+  60% { 
+    transform: scale(5) rotate(-10deg);
+    opacity: 1;
+    filter: brightness(2.5);
+  }
+  70% { 
+    transform: scale(6) rotate(12deg);
+    opacity: 0.9;
+    filter: brightness(2.8);
+  }
+  80% { 
+    transform: scale(7) rotate(-12deg);
+    opacity: 0.7;
+    filter: brightness(3);
+  }
+  90% { 
+    transform: scale(8) rotate(15deg);
+    opacity: 0.5;
+    filter: brightness(3.2);
+  }
+  100% { 
+    transform: scale(10) rotate(0deg);
+    opacity: 0;
+    filter: brightness(3.5);
+  }
+}
+
+.animate-running-shoes-fullscreen {
+  animation: runningShoesFullScreen 2.5s ease-out forwards;
+}
+
+.running-shoe-fullscreen {
+  position: absolute;
+  font-size: 60px;
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.7));
+  z-index: 1000001;
+}
+
+.running-shoes-fullscreen-text {
+  position: relative;
+  z-index: 1000002;
+  font-size: 3rem;
+  font-weight: 900;
+  text-align: center;
+  background: linear-gradient(45deg, #FF6B6B, #FFD166, #06D6A0, #118AB2, #EF476F);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: pulse-custom 1s infinite;
+}
+
+@media (max-width: 640px) {
+  .running-shoes-fullscreen-text {
+    font-size: 2rem;
+  }
+  
+  .running-shoe-fullscreen {
+    font-size: 40px;
+  }
+}
+  </style>
 </body>
 </html>
