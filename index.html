@@ -7015,7 +7015,623 @@ function renderLogin(isRegister = false) {
 }
  </script>
  <script>
+    // Initialize Calendar Modal - UPDATED VERSION
+async function initializeCalendarModal(type, modal) {
+  const calendarContent = modal.querySelector('#calendarContent');
+  let currentMonthYear = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+  
+  async function updateCalendar() {
+    // Update month display
+    const monthYear = currentMonthYear.toLocaleDateString('en-GB', { 
+      month: 'long', 
+      year: 'numeric' 
+    });
     
+    // Get activities for the month
+    const activities = await getActivitiesForMonth(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1);
+    const activityDays = new Set();
+    const finishedDays = new Set();
+    
+    activities.forEach(activity => {
+      const activityDate = new Date(activity.date);
+      activityDays.add(activityDate.getDate());
+      
+      // Check if activity is approved (finished)
+      if (activity.status === 'approved') {
+        finishedDays.add(activityDate.getDate());
+      }
+    });
+    
+    calendarContent.innerHTML = `
+      <div class="calendar-header calendar-modal-header">
+        <button id="prevMonth" class="p-2 hover:bg-white/10 rounded text-white">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <h3 class="font-bold text-white">${monthYear}</h3>
+        <button id="nextMonth" class="p-2 hover:bg-white/10 rounded text-white">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      <div class="calendar-grid" id="calendarDaysModal"></div>
+    `;
+    
+    const calendarDays = calendarContent.querySelector('#calendarDaysModal');
+    
+    // Add day headers
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    days.forEach(day => {
+      const dayElement = document.createElement('div');
+      dayElement.className = 'text-center text-xs font-bold text-white/70';
+      dayElement.textContent = day;
+      calendarDays.appendChild(dayElement);
+    });
+    
+    // Get first day of month
+    const firstDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), 1);
+    const lastDay = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth() + 1, 0);
+    
+    // Add empty cells for days before first day of month
+    for (let i = 0; i < firstDay.getDay(); i++) {
+      const emptyElement = document.createElement('div');
+      emptyElement.className = 'calendar-modal-day disabled';
+      calendarDays.appendChild(emptyElement);
+    }
+    
+    // Add days of month
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      const dayDate = new Date(currentMonthYear.getFullYear(), currentMonthYear.getMonth(), i);
+      const dayElement = document.createElement('div');
+      dayElement.className = 'calendar-modal-day relative';
+      
+      // Check if this day has activities
+      if (activityDays.has(i)) {
+        dayElement.classList.add('has-activity');
+      }
+      
+      // Check if this day has finished activities
+      if (finishedDays.has(i)) {
+        dayElement.classList.add('finished');
+        
+        // Check if this day has current user's activities with logo
+        const hasUserActivity = activities.some(activity => {
+          const activityDate = new Date(activity.date);
+          return activityDate.getDate() === i && 
+                 activity.bib_number === currentUser.bib_number && 
+                 activity.status === 'approved';
+        });
+        
+        if (hasUserActivity) {
+          // Create and add logo element
+          const logoElement = document.createElement('div');
+          logoElement.className = 'absolute top-0 left-0 w-4 h-4 z-10';
+          logoElement.innerHTML = `
+            <img src="${LOGO_IMAGE}" 
+                 alt="Activity Logo" 
+                 class="w-full h-full object-contain rounded-full"
+                 style="border: 1px solid rgba(255,255,255,0.3); background: rgba(234, 88, 12, 0.8);">
+          `;
+          dayElement.appendChild(logoElement);
+        }
+      }
+      
+      // Check if this is the selected date
+      const isSelected = selectedDate && 
+        dayDate.getDate() === selectedDate.getDate() &&
+        dayDate.getMonth() === selectedDate.getMonth() &&
+        dayDate.getFullYear() === selectedDate.getFullYear();
+      
+      if (isSelected) {
+        dayElement.classList.add('selected');
+      }
+      
+      dayElement.innerHTML += `<span class="relative z-0">${i}</span>`;
+      
+      dayElement.addEventListener('click', () => {
+        selectedDate = dayDate;
+        if (type === 'filter') {
+          document.getElementById('selectedDateDisplay').textContent = formatDate(selectedDate);
+          loadFilteredActivities();
+        } else if (type === 'feed') {
+          document.getElementById('feedDateDisplay').textContent = formatDate(selectedDate);
+          loadActivityFeed();
+        }
+        document.body.removeChild(modal);
+      });
+      calendarDays.appendChild(dayElement);
+    }
+    
+    // Add event listeners for prev/next buttons
+    calendarContent.querySelector('#prevMonth').addEventListener('click', () => {
+      currentMonthYear.setMonth(currentMonthYear.getMonth() - 1);
+      updateCalendar();
+    });
+    
+    calendarContent.querySelector('#nextMonth').addEventListener('click', () => {
+      currentMonthYear.setMonth(currentMonthYear.getMonth() + 1);
+      updateCalendar();
+    });
+  }
+  
+  // Get activities for a specific month
+  async function getActivitiesForMonth(year, month) {
+    try {
+      const snapshot = await db.ref('running_logs').once('value');
+      const activities = [];
+      
+      snapshot.forEach(childSnapshot => {
+        const activity = childSnapshot.val();
+        const activityDate = new Date(activity.date);
+        
+        if (activityDate.getFullYear() === year && activityDate.getMonth() + 1 === month) {
+          activities.push(activity);
+        }
+      });
+      
+      return activities;
+    } catch (error) {
+      console.error('Error getting activities for month:', error);
+      return [];
+    }
+  }
+  
+  // Initialize calendar
+  updateCalendar();
+}
  </script>
+ <style>
+    /* Calendar modal specific styles */
+.calendar-modal-header {
+  color: white !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.calendar-modal-day {
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.calendar-modal-day:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.calendar-modal-day.selected {
+  background: #ea580c;
+  color: white;
+  border-color: #ea580c;
+}
+
+.calendar-modal-day.disabled {
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+}
+
+.calendar-modal-day.has-activity {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+.calendar-modal-day.finished {
+  background: rgba(34, 197, 94, 0.3);
+  position: relative;
+}
+
+.calendar-modal-day.finished::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  background: #ffffff;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Calendar day number */
+.calendar-modal-day span {
+  position: relative;
+  z-index: 1;
+}
+
+/* Calendar logo image */
+.calendar-modal-day img {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(234, 88, 12, 0.8);
+  z-index: 10;
+  object-fit: contain;
+  padding: 1px;
+}
+ </style>
+
+ <script>
+    // Form submission
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const submitBtn = modal.querySelector('#submitActivityBtn');
+  const originalText = submitBtn.innerHTML;
+  
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div> Processing...';
+  
+  try {
+    // Validate inputs
+    const date = modal.querySelector('#activityDate').value;
+    const notes = modal.querySelector('#notes').value;
+    
+    if (!selectedImageFile) {
+      throw new Error('Please upload a proof image');
+    }
+    
+    if (!date) {
+      throw new Error('Please select a date');
+    }
+    
+    // Upload image
+    let imageUrl = null;
+    if (selectedImageFile) {
+      const storageRef = storage.ref();
+      const imageRef = storageRef.child(`activity_proofs/${Date.now()}_${selectedImageFile.name}`);
+      await imageRef.put(selectedImageFile);
+      imageUrl = await imageRef.getDownloadURL();
+    }
+    
+    // Save activity to database with pending status
+    const activityData = {
+      bib_number: currentUser.bib_number,
+      runner_name: currentUser.name,
+      nickname: currentUser.nickname,
+      date: date,
+      distance: 0, // Will be updated by admin
+      duration: 0, // Will be updated by admin
+      pace: 0, // Will be updated by admin
+      activity_type: selectedActivityType,
+      notes: notes || null,
+      proof_image: imageUrl,
+      status: 'pending',
+      submission_date: new Date().toISOString(),
+      likes: 0,
+      liked_by: []
+    };
+    
+    await db.ref('running_logs').push(activityData);
+    
+    // Close modal first
+    document.body.removeChild(modal);
+    isLogActivityModalOpen = false;
+    
+    // Show success message with WhatsApp redirection
+    const redirectModal = document.createElement('div');
+    redirectModal.className = 'fixed inset-0 z-[1000000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+    redirectModal.innerHTML = `
+      <div class="bg-white dark:bg-zinc-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-zinc-700">
+        <div class="p-6 sm:p-8 text-center">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-tr from-green-600 to-green-500 flex items-center justify-center">
+            <i class="fab fa-whatsapp text-2xl text-white"></i>
+          </div>
+          
+          <h3 class="text-xl font-black dark:text-white mb-2">Activity Submitted!</h3>
+          <p class="text-gray-600 dark:text-gray-400 mb-4">
+            Your activity has been submitted for admin approval.
+          </p>
+          
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            Join our WhatsApp group to stay updated with other runners and get your activity approved faster!
+          </p>
+          
+          <div class="space-y-3">
+            <button 
+              id="openWhatsAppGroup"
+              class="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-600/30"
+            >
+              <i class="fab fa-whatsapp"></i>
+              Join WhatsApp Group
+            </button>
+            
+            <button 
+              id="closeRedirectModal"
+              class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-xl transition-all"
+            >
+              Continue to Dashboard
+            </button>
+          </div>
+          
+          <p class="text-xs text-gray-400 mt-4">
+            Admin will add distance, duration & pace after reviewing your proof
+          </p>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(redirectModal);
+    
+    // WhatsApp group link
+    const whatsappGroupLink = 'https://chat.whatsapp.com/JOyedlWGMS4FdBJDxRgiAm?mode=gi_t';
+    
+    // Open WhatsApp group when button is clicked
+    document.getElementById('openWhatsAppGroup').addEventListener('click', () => {
+      window.open(whatsappGroupLink, '_blank');
+      document.body.removeChild(redirectModal);
+      
+      // Refresh activities tab
+      activeTab = 'activities';
+      renderContent();
+    });
+    
+    // Close modal and continue to dashboard
+    document.getElementById('closeRedirectModal').addEventListener('click', () => {
+      document.body.removeChild(redirectModal);
+      
+      // Refresh activities tab
+      activeTab = 'activities';
+      renderContent();
+    });
+    
+    // Also automatically open WhatsApp group after 3 seconds
+    setTimeout(() => {
+      if (document.body.contains(redirectModal)) {
+        window.open(whatsappGroupLink, '_blank');
+        document.body.removeChild(redirectModal);
+        
+        // Refresh activities tab
+        activeTab = 'activities';
+        renderContent();
+      }
+    }, 3000);
+    
+  } catch (error) {
+    alert('Error: ' + error.message);
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+  }
+});
+ </script>
+ <script>
+  // Complete Sidebar Component for Runners with WhatsApp Button
+function renderSidebar() {
+  const menuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-home' },
+    { id: 'feed', label: 'Activity Feed', icon: 'fas fa-newspaper' },
+    { id: 'ranking', label: 'Runners Ranking', icon: 'fas fa-trophy' },
+    { id: 'activities', label: 'My Activities', icon: 'fas fa-history' }
+  ];
+
+  // WhatsApp group link
+  const WHATSAPP_GROUP_LINK = 'https://chat.whatsapp.com/JOyedlWGMS4FdBJDxRgiAm?mode=gi_t';
+
+  return `
+    ${isSidebarOpen ? `
+      <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[55] md:hidden" id="sidebarOverlay"></div>
+    ` : ''}
+    <aside class="fixed top-14 sm:top-16 left-0 bottom-0 w-64 bg-gradient-to-b from-zinc-900 to-zinc-950 text-white z-[60] transition-transform duration-300 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 overflow-y-auto border-r border-zinc-800 hide-scrollbar shadow-2xl">
+      <div class="p-4 sm:p-6">
+        <!-- Profile Section -->
+        <div class="flex items-center gap-3 mb-6 sm:mb-8">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-base sm:text-lg font-bold shadow-lg shadow-orange-600/30">
+            <img src="${LOGO_IMAGE}" alt="Roadha Run Logo" class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover">
+          </div>
+          <div>
+            <p class="font-bold text-sm truncate w-32 text-white">Roadha Run</p>
+            <p class="text-xs text-orange-400 font-semibold">Runner Portal</p>
+            <p class="text-xs text-gray-400 mt-1">${currentUser.nickname || 'Runner'}</p>
+          </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="space-y-1 mb-6 sm:mb-8">
+          ${menuItems.map(item => `
+            <button
+              data-tab="${item.id}"
+              class="sidebar-tab-btn w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-all duration-200 ${activeTab === item.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'text-gray-400 hover:bg-zinc-800 hover:text-white'}"
+            >
+              <i class="${item.icon} w-5 text-center"></i>
+              <span class="font-medium text-sm">${item.label}</span>
+              ${item.id === 'feed' ? `
+                <span class="ml-auto w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+              ` : ''}
+            </button>
+          `).join('')}
+
+          <!-- WhatsApp Group Button - Simple & Clean -->
+          <button 
+            id="whatsappGroupBtn"
+            onclick="window.open('${WHATSAPP_GROUP_LINK}', '_blank')"
+            class="w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-colors mt-4"
+          >
+            <i class="fab fa-whatsapp text-lg"></i>
+            <span class="font-medium text-sm">Join WhatsApp Group</span>
+          </button>
+        </nav>
+        
+        <!-- Digital Bib in Sidebar -->
+        <div class="mb-6 sm:mb-8 rounded-2xl p-3 sm:p-4 relative overflow-hidden border-2 border-orange-600/50" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('${RUNNER_BACKGROUND}') center/cover no-repeat;">
+          <div class="relative z-10">
+            <p class="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-2 text-center">Your Digital Bib</p>
+            <div class="bib-number text-2xl sm:text-3xl font-black text-center text-white mb-2 tracking-wider">${currentUser.bib_number}</div>
+            
+            <div class="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-orange-500/30">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-orange-300">Total Distance</span>
+                <span class="text-sm font-bold text-white">${formatNumber(currentUser.total_distance || 0, 1)} km</span>
+              </div>
+              <div class="w-full bg-white/10 rounded-full h-1.5 mb-2">
+                <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-1.5 rounded-full" style="width: ${Math.min(100, ((currentUser.total_distance || 0) / 100) * 100)}%"></div>
+              </div>
+            </div>
+            
+            <p class="text-xs text-gray-300 text-center truncate">${currentUser.name}</p>
+            <p class="text-xs text-orange-300 text-center mt-1 truncate">"${currentUser.nickname}"</p>
+            ${currentUser.goal ? `
+              <div class="mt-2 pt-2 border-t border-orange-500/30">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-orange-300">Goal: ${currentUser.goal}</span>
+                  <span class="text-xs font-bold text-white">${Math.min(100, Math.round(((currentUser.total_distance || 0) / parseInt(currentUser.goal)) * 100))}%</span>
+                </div>
+                <div class="w-full bg-white/10 rounded-full h-1.5 mt-1">
+                  <div class="bg-gradient-to-r from-orange-500 to-amber-400 h-1.5 rounded-full" style="width: ${Math.min(100, ((currentUser.total_distance || 0) / parseInt(currentUser.goal)) * 100)}%"></div>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Ranking Section in Sidebar -->
+        <div class="mb-6 sm:mb-8">
+          <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 sm:mb-4 flex items-center gap-2">
+            <i class="fas fa-trophy text-yellow-500"></i>
+            Your Ranking
+          </p>
+          <div id="sidebarRanking" class="space-y-2">
+            <!-- Will be loaded via JavaScript -->
+            <div class="animate-pulse">
+              <div class="h-16 bg-zinc-800/50 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Medal Progress in Sidebar -->
+        <div class="mb-6 sm:mb-8">
+          <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 sm:mb-4 flex items-center gap-2">
+            <i class="fas fa-medal text-orange-500"></i>
+            Medal Progress
+          </p>
+          <div id="sidebarMedals" class="space-y-2">
+            <!-- Will be loaded via JavaScript -->
+            <div class="animate-pulse">
+              <div class="h-20 bg-zinc-800/50 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Section with Sign Out -->
+      <div class="absolute bottom-6 left-4 right-4 sm:left-6 sm:right-6">
+        <!-- Quick Stats Preview -->
+        <div class="mb-3 p-3 sm:p-4 bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-2xl border border-zinc-700 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Total Distance</p>
+              <p class="text-lg sm:text-xl font-black text-orange-500">${formatNumber(currentUser.total_distance || 0, 1)} km</p>
+              ${currentUser.goal ? `
+                <p class="text-xs text-gray-400">Goal: ${currentUser.goal}</p>
+              ` : ''}
+            </div>
+            <div class="p-2 sm:p-3 bg-zinc-700 rounded-xl">
+              <div class="text-orange-500 text-xl sm:text-2xl">🏃‍♂️</div>
+            </div>
+          </div>
+          
+          <!-- Today's activity indicator -->
+          <div class="flex items-center gap-2 mt-1 text-xs">
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span class="text-gray-400">Ready to run today?</span>
+          </div>
+        </div>
+        
+        <!-- Sign Out Button -->
+        <button 
+          id="sidebarLogout" 
+          class="w-full py-2.5 sm:py-3 bg-gradient-to-r from-red-600/20 to-red-700/20 hover:from-red-600 hover:to-red-700 text-red-500 hover:text-white text-xs font-bold rounded-xl border border-red-500/30 hover:border-red-500 transition-all duration-300 flex items-center justify-center gap-2 group"
+        >
+          <i class="fas fa-sign-out-alt group-hover:translate-x-1 transition-transform"></i>
+          Sign Out
+        </button>
+        
+        <!-- App Version -->
+        <p class="text-center text-[8px] text-gray-600 mt-3">
+          Roadha Run v2.0 • Powered by Ahmed Vaseem
+        </p>
+      </div>
+    </aside>
+
+    <!-- Mobile WhatsApp Button - Simple Floating Button -->
+    <div class="md:hidden fixed bottom-20 right-4 z-[70]">
+      <button 
+        id="mobileWhatsappBtn"
+        onclick="window.open('${WHATSAPP_GROUP_LINK}', '_blank')"
+        class="w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg flex items-center justify-center transition-colors"
+      >
+        <i class="fab fa-whatsapp text-2xl"></i>
+      </button>
+    </div>
+  `;
+
+  // Load sidebar ranking and medals
+  setTimeout(() => {
+    loadSidebarRanking();
+    loadSidebarMedals();
+  }, 100);
+}
+
+// Clean sidebar styles - only essential
+const sidebarStyles = `
+  /* Sidebar custom scrollbar */
+  .hide-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar-track {
+    background: #18181b;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar-thumb {
+    background: #ea580c;
+    border-radius: 20px;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #f97316;
+  }
+  
+  /* Sidebar menu item active state */
+  .sidebar-tab-btn.active {
+    position: relative;
+  }
+  
+  .sidebar-tab-btn.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 70%;
+    background: linear-gradient(to bottom, #ea580c, #f59e0b);
+    border-radius: 0 4px 4px 0;
+  }
+`;
+
+// Add styles to document
+const styleSheet = document.createElement("style");
+styleSheet.textContent = sidebarStyles;
+document.head.appendChild(styleSheet);
+
+// Simple initialize function
+function initializeSidebar() {
+  loadSidebarRanking();
+  loadSidebarMedals();
+}
+
+// Call initializeSidebar after sidebar is rendered
+setTimeout(initializeSidebar, 500);
+ </script>
+ 
 </body>
 </html>
